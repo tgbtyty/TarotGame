@@ -1,0 +1,40 @@
+[gd_scene load_steps=2 format=3 uid="uid://cg6krh8ielc8b"]
+
+[ext_resource type="Script" uid="uid://l0eyo1xeu63e" path="res://game_over_screen.gd" id="1_gt22q"]
+
+[node name="GameOverScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_gt22q")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+scale = Vector2(9.01, 9.01)
+text = "GAME OVER"
+
+[node name="RestartButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 300.0
+offset_top = 400.0
+offset_right = 365.0
+offset_bottom = 431.0
+scale = Vector2(2.055, 2.055)
+text = "Restart"
+
+[node name="QuitButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 400.0
+offset_top = 200.0
+offset_right = 442.0
+offset_bottom = 231.0
+text = "Quit"

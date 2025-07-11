@@ -1,0 +1,67 @@
+[gd_scene load_steps=6 format=3 uid="uid://c8ht66rbhourv"]
+
+[ext_resource type="PackedScene" uid="uid://de6cyqhvsvgbu" path="res://player.tscn" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://c0dab3l75v0c3" path="res://main.gd" id="1_h2yge"]
+[ext_resource type="Texture2D" uid="uid://bbnh4ptxtybxg" path="res://icon.svg" id="3_h2yge"]
+[ext_resource type="PackedScene" uid="uid://bt1pv8aiudbkh" path="res://pause_menu.tscn" id="4_lquwl"]
+[ext_resource type="PackedScene" uid="uid://cg6krh8ielc8b" path="res://game_over_screen.tscn" id="5_7mycd"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_h2yge")
+
+[node name="Player" parent="." instance=ExtResource("1_0xm2m")]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="SpecialCooldownLabel" type="Label" parent="CanvasLayer"]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "Special: Ready"
+
+[node name="HealthBar" type="TextureProgressBar" parent="CanvasLayer"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -40.0
+offset_right = 40.0
+grow_vertical = 0
+scale = Vector2(0.994083, 0.997085)
+value = 100.0
+texture_under = ExtResource("3_h2yge")
+texture_progress = ExtResource("3_h2yge")
+tint_under = Color(0.703248, 0.102826, 0.217392, 1)
+tint_progress = Color(0.402093, 0.746281, 0.35104, 1)
+
+[node name="AmmoLabel" type="Label" parent="CanvasLayer"]
+offset_left = 300.0
+offset_right = 343.0
+offset_bottom = 23.0
+text = "20/20"
+
+[node name="ReloadIndicator" type="TextureProgressBar" parent="CanvasLayer"]
+offset_left = 235.845
+offset_right = 363.845
+offset_bottom = 128.0
+scale = Vector2(0.365, 0.315)
+texture_under = ExtResource("3_h2yge")
+texture_progress = ExtResource("3_h2yge")
+tint_progress = Color(0.0885599, 0.0885599, 0.0885599, 1)
+
+[node name="KillsLabel" type="Label" parent="CanvasLayer"]
+offset_left = 500.0
+offset_right = 550.0
+offset_bottom = 23.0
+text = "Kills: 0"
+
+[node name="PauseMenu" parent="CanvasLayer" instance=ExtResource("4_lquwl")]
+process_mode = 3
+visible = false
+
+[node name="GameOverScreen" parent="CanvasLayer" instance=ExtResource("5_7mycd")]
+visible = false
+
+[node name="SpawnTimer" type="Timer" parent="."]
+wait_time = 2.0
+autostart = true
+
+[connection signal="timeout" from="SpawnTimer" to="." method="_on_spawn_timer_timeout"]

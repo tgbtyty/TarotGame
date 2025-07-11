@@ -1,0 +1,42 @@
+[gd_scene load_steps=2 format=3 uid="uid://bt1pv8aiudbkh"]
+
+[ext_resource type="Script" uid="uid://rnkrumdpfhx8" path="res://pause_menu.gd" id="1_hdmo1"]
+
+[node name="PauseMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_hdmo1")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 200.0
+offset_right = 306.0
+offset_bottom = 23.0
+scale = Vector2(4.375, 4.375)
+text = "Game Paused"
+
+[node name="QuitButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 250.0
+offset_top = 300.0
+offset_right = 342.0
+offset_bottom = 331.0
+scale = Vector2(1.85, 1.85)
+text = "Quit Game"
+
+[node name="ResumeButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 400.0
+offset_top = 250.0
+offset_right = 470.0
+offset_bottom = 281.0
+scale = Vector2(0.995294, 1.07874)
+text = "Resume"

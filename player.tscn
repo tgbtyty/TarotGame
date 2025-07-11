@@ -1,0 +1,58 @@
+[gd_scene load_steps=6 format=3 uid="uid://de6cyqhvsvgbu"]
+
+[ext_resource type="Script" uid="uid://by5vod5jvs17s" path="res://player.gd" id="1_4flbx"]
+[ext_resource type="PackedScene" uid="uid://bmfdvkseug86e" path="res://bullet.tscn" id="2_onrkg"]
+[ext_resource type="Texture2D" uid="uid://brlsh3fqhn63y" path="res://kast_idle1.png" id="3_i3pqv"]
+[ext_resource type="Texture2D" uid="uid://bbnh4ptxtybxg" path="res://icon.svg" id="4_hqtel"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_sh265"]
+
+[node name="Player" type="CharacterBody2D" groups=["players"]]
+script = ExtResource("1_4flbx")
+bullet_scene = ExtResource("2_onrkg")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("3_i3pqv")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 5.71)
+scale = Vector2(1.484, 1.299)
+shape = SubResource("CapsuleShape2D_sh265")
+one_way_collision_margin = 0.0
+
+[node name="Muzzle" type="Node2D" parent="."]
+position = Vector2(18.875, 1)
+scale = Vector2(20.0938, 0.108277)
+
+[node name="DashCooldown" type="Timer" parent="."]
+
+[node name="SpecialCooldown" type="Timer" parent="."]
+wait_time = 6.0
+one_shot = true
+
+[node name="DashBar" type="TextureProgressBar" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -31.285
+offset_top = 24.421
+offset_right = 96.715
+offset_bottom = 152.421
+grow_horizontal = 2
+grow_vertical = 0
+scale = Vector2(0.514, 0.06)
+max_value = 2.0
+value = 2.0
+texture_under = ExtResource("4_hqtel")
+texture_progress = ExtResource("4_hqtel")
+tint_under = Color(0.125911, 0.125911, 0.125911, 1)
+tint_progress = Color(0.664741, 0.892431, 0.906343, 1)
+
+[node name="ReloadTimer" type="Timer" parent="."]
+one_shot = true
+
+[connection signal="timeout" from="DashCooldown" to="." method="_on_dash_cooldown_timeout"]
+[connection signal="timeout" from="SpecialCooldown" to="." method="_on_special_cooldown_timeout"]
+[connection signal="timeout" from="ReloadTimer" to="." method="_on_reload_timer_timeout"]
