@@ -1,0 +1,31 @@
+[gd_scene load_steps=3 format=3 uid="uid://0h83bol220km"]
+
+[ext_resource type="Script" uid="uid://cbfflr48xp5cy" path="res://card_selection.gd" id="1_4086e"]
+[ext_resource type="PackedScene" uid="uid://b1yyidpexbwre" path="res://card_ui.tscn" id="2_dgva8"]
+
+[node name="CardSelectionScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_4086e")
+
+[node name="Panel" type="Panel" parent="."]
+top_level = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+process_mode = 3
+layout_mode = 0
+offset_left = 11.09
+offset_top = 40.0
+offset_right = 76.09
+offset_bottom = 152.0
+scale = Vector2(0.880021, 1.23788)
+
+[node name="CardUI" parent="HBoxContainer" instance=ExtResource("2_dgva8")]
+layout_mode = 2

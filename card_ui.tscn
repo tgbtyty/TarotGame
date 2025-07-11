@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://b1yyidpexbwre"]
+
+[ext_resource type="Script" uid="uid://y4yyyj2qeuci" path="res://card_ui.gd" id="1_gf2xd"]
+
+[node name="CardUI" type="PanelContainer"]
+scale = Vector2(1.90476, 1.86607)
+mouse_filter = 2
+script = ExtResource("1_gf2xd")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="NameLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ChosenEffectLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="PassedEffectLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ChooseButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Choose"
+
+[connection signal="pressed" from="VBoxContainer/ChooseButton" to="." method="_on_choose_button_pressed"]

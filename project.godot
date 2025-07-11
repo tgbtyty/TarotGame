@@ -15,10 +15,18 @@ run/main_scene="uid://c8ht66rbhourv"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+GameManager="*res://game_manager.gd"
+
 [display]
 
 window/size/mode=3
 window/stretch/mode="canvas_items"
+
+[editor]
+
+version_control/autoload_on_startup=true
 
 [global_group]
 

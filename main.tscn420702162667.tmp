@@ -60,8 +60,7 @@ text = "Kills: 0"
 
 [node name="Card_Layer" type="CanvasLayer" parent="."]
 
-[node name="CardSelectionScreen" parent="Card_Layer" instance=ExtResource("6_7mycd")]
-process_mode = 3
+[node name="CardSelectionScreen" parent="." instance=ExtResource("6_7mycd")]
 visible = false
 
 [node name="Menu_Layer" type="CanvasLayer" parent="."]
