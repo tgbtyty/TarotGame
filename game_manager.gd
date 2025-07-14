@@ -5,6 +5,7 @@ var enemy_health_bonus = 0
 var enemy_damage_bonus = 0
 var enemy_speed_multiplier = 1.0
 var enemy_size_multiplier = 1.0
+var total_kills = 0;
 
 # --- Card Data ---
 var suits = ["Cups", "Swords", "Wands", "Pentacles"]

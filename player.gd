@@ -27,10 +27,10 @@ var is_reloading = false
 # --- Special Variables ---
 var can_use_special = true
 
-# --- UI Node References ---
+# --- Node References ---
 @onready var muzzle = $Muzzle
 @onready var dash_bar = $DashBar
-# UPDATED all paths below to use "HUD_Layer"
+@onready var pushback_area = $PushbackArea # NEW
 @onready var health_bar = get_node_or_null("/root/Main/HUD_Layer/HealthBar")
 @onready var special_label = get_node_or_null("/root/Main/HUD_Layer/SpecialCooldownLabel")
 @onready var ammo_label = get_node_or_null("/root/Main/HUD_Layer/AmmoLabel")
@@ -41,22 +41,18 @@ func _ready():
 	current_health = max_health
 	current_ammo = magazine_size
 	
-	# Health bar setup
 	if health_bar:
 		health_bar.max_value = max_health
 		health_bar.value = current_health
 	
-	# Special cooldown label setup
 	if special_label:
 		special_label.text = "Special: Ready"
 	
-	# Dash bar setup
 	if dash_bar:
 		dash_bar.max_value = $DashCooldown.wait_time
 		dash_bar.value = dash_bar.max_value
 		dash_bar.visible = false
 		
-	# Ammo UI Setup
 	if ammo_label:
 		ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	if reload_indicator:
@@ -65,7 +61,6 @@ func _ready():
 
 
 func _physics_process(_delta):
-	# Update UI elements every frame
 	if special_label and not $SpecialCooldown.is_stopped():
 		special_label.text = "Special: %.1fs" % $SpecialCooldown.time_left
 	
@@ -74,11 +69,9 @@ func _physics_process(_delta):
 		
 	if is_reloading and reload_indicator:
 		var reload_timer = $ReloadTimer
-		# Calculate fill based on time passed, not time left
 		var time_passed = reload_timer.wait_time - reload_timer.time_left
 		reload_indicator.value = (time_passed / reload_timer.wait_time) * 100
 
-	# Movement logic
 	if is_dashing:
 		velocity = dash_direction * dash_speed
 	else:
@@ -110,7 +103,7 @@ func apply_card_buff(card_data):
 	match card_data.suit:
 		"Cups":
 			max_health += card_data.value
-			current_health += card_data.value # Heal for the same amount
+			current_health += card_data.value
 			health_bar.max_value = max_health
 			health_bar.value = current_health
 		"Swords":
@@ -121,22 +114,29 @@ func apply_card_buff(card_data):
 			reload_speed_multiplier += multiplier
 		"Wands":
 			magazine_size += card_data.value
-			# Also refill ammo
 			current_ammo = magazine_size
 			ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 
 func take_damage(amount):
 	current_health -= amount
-	if current_health < 0:
-		current_health = 0
-	
 	if health_bar:
 		health_bar.value = current_health
 	
-	if current_health == 0:
+	push_back_nearby_enemies() # NEW: Trigger pushback on taking damage
+	
+	if current_health <= 0:
+		current_health = 0
 		player_died.emit()
 		hide()
 		$CollisionShape2D.set_deferred("disabled", true)
+
+# NEW: Function to find and push back all enemies in the PushbackArea
+func push_back_nearby_enemies():
+	var bodies = pushback_area.get_overlapping_bodies()
+	for body in bodies:
+		if body.is_in_group("enemies"):
+			var push_direction = (body.global_position - global_position).normalized()
+			body.apply_knockback(push_direction)
 
 
 func start_dash():
@@ -146,7 +146,13 @@ func start_dash():
 	if dash_bar:
 		dash_bar.visible = true
 	
-	dash_direction = (get_global_mouse_position() - global_position).normalized()
+	# UPDATED: Dash direction is now based on movement input
+	var input_direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	if input_direction != Vector2.ZERO:
+		dash_direction = input_direction.normalized()
+	else:
+		# If standing still, dash in the direction the player is facing
+		dash_direction = Vector2.RIGHT.rotated(global_rotation)
 	
 	get_tree().create_timer(0.2).timeout.connect(func(): is_dashing = false)
 
@@ -158,17 +164,15 @@ func shoot():
 	
 	current_ammo -= 1
 	can_shoot = false
-	
 	if ammo_label:
 		ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	
 	var bullet = bullet_scene.instantiate()
-	bullet.speed = 1200
-	bullet.damage = base_bullet_damage # Use the new damage variable
+	bullet.speed = 900
+	bullet.damage = base_bullet_damage
 	get_tree().root.add_child(bullet)
 	bullet.global_transform = muzzle.global_transform
 	
-	# Apply attack speed multiplier
 	var fire_rate = 0.5 / attack_speed_multiplier
 	get_tree().create_timer(fire_rate).timeout.connect(func(): can_shoot = true)
 	
@@ -178,7 +182,6 @@ func shoot():
 
 func reload_gun():
 	is_reloading = true
-	# Apply reload speed multiplier
 	$ReloadTimer.wait_time = 1.0 / reload_speed_multiplier
 	$ReloadTimer.start()
 	
@@ -206,7 +209,7 @@ func fan_the_hammer():
 		if not bullet_scene: return
 		var bullet = bullet_scene.instantiate()
 		bullet.speed = 2000
-		bullet.damage = base_bullet_damage # Special also uses new damage
+		bullet.damage = base_bullet_damage
 		get_tree().root.add_child(bullet)
 		
 		var spread = deg_to_rad(randf_range(-15, 15))

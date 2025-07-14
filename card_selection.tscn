@@ -25,7 +25,7 @@ offset_left = 11.09
 offset_top = 40.0
 offset_right = 76.09
 offset_bottom = 152.0
-scale = Vector2(0.880021, 1.23788)
+scale = Vector2(0.88132, 1.23279)
 
 [node name="CardUI" parent="HBoxContainer" instance=ExtResource("2_dgva8")]
 layout_mode = 2

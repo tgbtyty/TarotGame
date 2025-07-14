@@ -58,6 +58,21 @@ offset_right = 550.0
 offset_bottom = 23.0
 text = "Kills: 0"
 
+[node name="RoundLabel" type="Label" parent="HUD_Layer"]
+offset_left = 640.0
+offset_right = 758.0
+offset_bottom = 23.0
+text = "Round: 1"
+
+[node name="RoundCompleteLabel" type="Label" parent="HUD_Layer"]
+visible = false
+offset_left = 231.0
+offset_top = 218.0
+offset_right = 375.0
+offset_bottom = 248.0
+scale = Vector2(4.775, 4.775)
+text = "Round Complete!"
+
 [node name="Card_Layer" type="CanvasLayer" parent="."]
 
 [node name="CardSelectionScreen" parent="Card_Layer" instance=ExtResource("6_7mycd")]

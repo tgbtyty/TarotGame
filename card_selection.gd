@@ -1,5 +1,7 @@
 extends Control
 
+signal selection_complete
+
 @onready var card_container = $HBoxContainer
 @onready var card_ui_scene = preload("res://card_ui.tscn")
 
@@ -49,3 +51,4 @@ func _on_card_chosen(chosen_card_data):
 	# End selection
 	hide()
 	get_tree().paused = false
+	selection_complete.emit()

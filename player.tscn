@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://de6cyqhvsvgbu"]
+[gd_scene load_steps=7 format=3 uid="uid://de6cyqhvsvgbu"]
 
 [ext_resource type="Script" uid="uid://by5vod5jvs17s" path="res://player.gd" id="1_4flbx"]
 [ext_resource type="PackedScene" uid="uid://bmfdvkseug86e" path="res://bullet.tscn" id="2_onrkg"]
@@ -6,6 +6,9 @@
 [ext_resource type="Texture2D" uid="uid://bbnh4ptxtybxg" path="res://icon.svg" id="4_hqtel"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_sh265"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hqtel"]
+radius = 71.0634
 
 [node name="Player" type="CharacterBody2D" groups=["players"]]
 script = ExtResource("1_4flbx")
@@ -21,8 +24,6 @@ shape = SubResource("CapsuleShape2D_sh265")
 one_way_collision_margin = 0.0
 
 [node name="Muzzle" type="Node2D" parent="."]
-position = Vector2(18.875, 1)
-scale = Vector2(20.0938, 0.108277)
 
 [node name="DashCooldown" type="Timer" parent="."]
 
@@ -52,6 +53,11 @@ tint_progress = Color(0.664741, 0.892431, 0.906343, 1)
 
 [node name="ReloadTimer" type="Timer" parent="."]
 one_shot = true
+
+[node name="PushbackArea" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PushbackArea"]
+shape = SubResource("CircleShape2D_hqtel")
 
 [connection signal="timeout" from="DashCooldown" to="." method="_on_dash_cooldown_timeout"]
 [connection signal="timeout" from="SpecialCooldown" to="." method="_on_special_cooldown_timeout"]
