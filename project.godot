@@ -32,6 +32,7 @@ version_control/autoload_on_startup=true
 
 enemies="pve monsters"
 players="main chars"
+orbs="orbs"
 
 [input]
 

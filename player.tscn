@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://de6cyqhvsvgbu"]
+[gd_scene load_steps=8 format=3 uid="uid://de6cyqhvsvgbu"]
 
 [ext_resource type="Script" uid="uid://by5vod5jvs17s" path="res://player.gd" id="1_4flbx"]
 [ext_resource type="PackedScene" uid="uid://bmfdvkseug86e" path="res://bullet.tscn" id="2_onrkg"]
@@ -9,6 +9,10 @@
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hqtel"]
 radius = 71.0634
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hqtel"]
+radius = 17.0
+height = 46.0
 
 [node name="Player" type="CharacterBody2D" groups=["players"]]
 script = ExtResource("1_4flbx")
@@ -59,6 +63,13 @@ one_shot = true
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PushbackArea"]
 shape = SubResource("CircleShape2D_hqtel")
 
+[node name="OrbCollectorArea" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OrbCollectorArea"]
+position = Vector2(0, 5)
+shape = SubResource("CapsuleShape2D_hqtel")
+
 [connection signal="timeout" from="DashCooldown" to="." method="_on_dash_cooldown_timeout"]
 [connection signal="timeout" from="SpecialCooldown" to="." method="_on_special_cooldown_timeout"]
 [connection signal="timeout" from="ReloadTimer" to="." method="_on_reload_timer_timeout"]
+[connection signal="area_entered" from="OrbCollectorArea" to="." method="_on_orb_collector_area_area_entered"]

@@ -13,6 +13,9 @@ var base_bullet_damage = 5
 var attack_speed_multiplier = 1.0
 var reload_speed_multiplier = 1.0
 
+# --- Buffs ---
+var is_repelling = false
+
 # --- Dash Variables ---
 var dash_direction = Vector2.ZERO
 var is_dashing = false
@@ -30,7 +33,7 @@ var can_use_special = true
 # --- Node References ---
 @onready var muzzle = $Muzzle
 @onready var dash_bar = $DashBar
-@onready var pushback_area = $PushbackArea # NEW
+@onready var pushback_area = $PushbackArea
 @onready var health_bar = get_node_or_null("/root/Main/HUD_Layer/HealthBar")
 @onready var special_label = get_node_or_null("/root/Main/HUD_Layer/SpecialCooldownLabel")
 @onready var ammo_label = get_node_or_null("/root/Main/HUD_Layer/AmmoLabel")
@@ -61,6 +64,15 @@ func _ready():
 
 
 func _physics_process(_delta):
+	# --- Handle Autofire ---
+	if Input.is_action_pressed("shoot") and can_shoot and current_ammo > 0 and not is_reloading:
+		shoot()
+		
+	# --- Handle Blue Orb Repel ---
+	if is_repelling:
+		push_back_nearby_enemies()
+	
+	# Update UI elements every frame
 	if special_label and not $SpecialCooldown.is_stopped():
 		special_label.text = "Special: %.1fs" % $SpecialCooldown.time_left
 	
@@ -72,6 +84,7 @@ func _physics_process(_delta):
 		var time_passed = reload_timer.wait_time - reload_timer.time_left
 		reload_indicator.value = (time_passed / reload_timer.wait_time) * 100
 
+	# Movement logic
 	if is_dashing:
 		velocity = dash_direction * dash_speed
 	else:
@@ -87,11 +100,9 @@ func _physics_process(_delta):
 
 
 func _unhandled_input(event):
+	# Shooting logic was moved to _physics_process for autofire
 	if event.is_action_pressed("dash") and not is_dashing and can_dash:
 		start_dash()
-	
-	if event.is_action_pressed("shoot") and can_shoot and current_ammo > 0 and not is_reloading:
-		shoot()
 	
 	if event.is_action_pressed("reload") and not is_reloading and current_ammo < magazine_size:
 		reload_gun()
@@ -118,11 +129,13 @@ func apply_card_buff(card_data):
 			ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 
 func take_damage(amount):
+	if is_repelling: return # Blue orb makes you immune to touch damage
+	
 	current_health -= amount
 	if health_bar:
 		health_bar.value = current_health
 	
-	push_back_nearby_enemies() # NEW: Trigger pushback on taking damage
+	push_back_nearby_enemies()
 	
 	if current_health <= 0:
 		current_health = 0
@@ -130,7 +143,6 @@ func take_damage(amount):
 		hide()
 		$CollisionShape2D.set_deferred("disabled", true)
 
-# NEW: Function to find and push back all enemies in the PushbackArea
 func push_back_nearby_enemies():
 	var bodies = pushback_area.get_overlapping_bodies()
 	for body in bodies:
@@ -146,12 +158,10 @@ func start_dash():
 	if dash_bar:
 		dash_bar.visible = true
 	
-	# UPDATED: Dash direction is now based on movement input
 	var input_direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if input_direction != Vector2.ZERO:
 		dash_direction = input_direction.normalized()
 	else:
-		# If standing still, dash in the direction the player is facing
 		dash_direction = Vector2.RIGHT.rotated(global_rotation)
 	
 	get_tree().create_timer(0.2).timeout.connect(func(): is_dashing = false)
@@ -181,6 +191,9 @@ func shoot():
 
 
 func reload_gun():
+	# Don't interrupt a reload
+	if is_reloading: return
+	
 	is_reloading = true
 	$ReloadTimer.wait_time = 1.0 / reload_speed_multiplier
 	$ReloadTimer.start()
@@ -243,3 +256,45 @@ func _on_reload_timer_timeout():
 	if reload_indicator:
 		reload_indicator.visible = false
 		reload_indicator.value = 0
+
+
+func apply_yellow_orb_effect():
+	# 1. Fill ammo
+	if not is_reloading: current_ammo = magazine_size
+	if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
+	
+	# 2. Double attack speed for 3 seconds
+	attack_speed_multiplier *= 2
+	var tween = get_tree().create_tween()
+	tween.tween_interval(3.0) # Wait 3 seconds
+	tween.tween_callback(func(): attack_speed_multiplier /= 2) # Revert speed
+	tween.tween_callback(func(): # 3. Fill ammo again
+		if not is_reloading: current_ammo = magazine_size
+		if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
+	)
+
+func apply_green_orb_effect():
+	var heal_amount = max_health * 0.25
+	# min() prevents overhealing
+	current_health = min(max_health, current_health + heal_amount)
+	if health_bar:
+		health_bar.value = current_health
+
+func apply_blue_orb_effect():
+	is_repelling = true
+	var tween = get_tree().create_tween()
+	tween.tween_interval(5.0) # Wait 5 seconds
+	# CORRECTED: This now properly sets 'is_repelling' to false.
+	tween.tween_callback(func(): is_repelling = false) # Turn off repel effect
+
+
+func _on_orb_collector_area_area_entered(area: Area2D) -> void:
+		if area.is_in_group("orbs"):
+			match area.orb_type:
+				"yellow":
+					apply_yellow_orb_effect()
+				"green":
+					apply_green_orb_effect()
+				"blue":
+					apply_blue_orb_effect()
+			area.queue_free()

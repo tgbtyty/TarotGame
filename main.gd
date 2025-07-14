@@ -1,6 +1,7 @@
 extends Node2D
 
 @onready var enemy_scene = preload("res://enemy.tscn")
+@onready var orb_scene = preload("res://orb.tscn")
 @onready var player = $Player
 @onready var spawn_timer = $SpawnTimer
 
@@ -21,29 +22,21 @@ var enemies_killed_this_round = 0
 func _ready():
 	player.global_position = get_viewport_rect().size / 2.0
 	player.player_died.connect(on_player_died)
-	
-	# UPDATED: When card selection is finished, it now calls begin_spawning()
 	card_selection_screen.selection_complete.connect(begin_spawning)
-	
 	start_new_round()
 
-# UPDATED: This function now only prepares the round and shows cards if needed.
 func start_new_round():
 	round_label.text = "Round %d" % current_round
-	
 	enemies_to_spawn_this_round = 5 + (current_round - 1) * 3
 	spawn_timer.wait_time = max(0.2, 1.0 - (current_round - 1) * 0.075)
-	
 	enemies_spawned_this_round = 0
 	enemies_killed_this_round = 0
 	
 	if current_round > 1:
 		card_selection_screen.start_selection()
 	else:
-		# For round 1, go directly to spawning
 		begin_spawning()
 
-# NEW: This function's only job is to start the enemy spawner.
 func begin_spawning():
 	spawn_timer.start()
 
@@ -83,9 +76,28 @@ func spawn_enemy():
 	
 	enemy_instance.global_position = spawn_pos
 	add_child(enemy_instance)
+	
+func _on_orb_spawn_timer_timeout():
+	if get_tree().paused: return
+
+	var screen_size = get_viewport_rect().size
+	var orb_instance = orb_scene.instantiate()
+	
+	# CORRECTED: Add the orb to the scene FIRST
+	add_child(orb_instance)
+	
+	# Then set its type and position
+	var orb_types = ["yellow", "green", "blue"]
+	orb_instance.set_type(orb_types.pick_random())
+	
+	orb_instance.global_position = Vector2(
+		randf_range(50, screen_size.x - 50),
+		randf_range(50, screen_size.y - 50)
+	)
 
 func on_player_died():
 	spawn_timer.stop()
+	$OrbSpawnTimer.stop() # CORRECTED: Stop orbs from spawning on Game Over
 	game_over_screen.show()
 
 func on_enemy_died():
@@ -97,7 +109,6 @@ func on_enemy_died():
 		end_round()
 
 func end_round():
-	# Show "Round Complete!" message briefly
 	round_complete_label.show()
 	await get_tree().create_timer(2.0).timeout
 	round_complete_label.hide()

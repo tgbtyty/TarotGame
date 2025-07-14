@@ -25,7 +25,7 @@ func _ready():
 	scale *= GameManager.enemy_size_multiplier
 
 func initialize(round_number):
-	var round_health = base_health + (round_number - 1) * 5
+	var round_health = base_health + (round_number - 1) * 1
 	health = round_health + GameManager.enemy_health_bonus
 
 func _physics_process(_delta):

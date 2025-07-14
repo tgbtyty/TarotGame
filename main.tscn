@@ -11,9 +11,15 @@
 script = ExtResource("1_h2yge")
 
 [node name="Player" parent="." instance=ExtResource("1_0xm2m")]
+speed = 350
+dash_speed = 900
 
 [node name="SpawnTimer" type="Timer" parent="."]
 wait_time = 2.0
+autostart = true
+
+[node name="OrbSpawnTimer" type="Timer" parent="."]
+wait_time = 7.0
 autostart = true
 
 [node name="HUD_Layer" type="CanvasLayer" parent="."]
@@ -89,3 +95,4 @@ process_mode = 3
 visible = false
 
 [connection signal="timeout" from="SpawnTimer" to="." method="_on_spawn_timer_timeout"]
+[connection signal="timeout" from="OrbSpawnTimer" to="." method="_on_orb_spawn_timer_timeout"]

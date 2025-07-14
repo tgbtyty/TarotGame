@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3 uid="uid://3ga75b6eld1o"]
+
+[ext_resource type="Script" uid="uid://eye4l6kngro3" path="res://orb.gd" id="1_ogqpy"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_xdlj8"]
+
+[node name="Orb" type="Area2D" groups=["orbs"]]
+script = ExtResource("1_ogqpy")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_right = 20.0
+offset_bottom = 20.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(10, 10)
+shape = SubResource("RectangleShape2D_xdlj8")
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 6.0
+autostart = true
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
