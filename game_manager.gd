@@ -10,6 +10,11 @@ var enemy_size_multiplier = 1.0
 var enemy_crit_chance = 0.0
 var enemy_crit_damage = 0.0
 var enemy_all_resist = 0.0
+var enemy_fire_damage_bonus = 0.0
+var enemy_cold_damage_bonus = 0.0
+var enemy_lightning_damage_bonus = 0.0
+var enemy_chaos_damage_bonus = Vector2.ZERO
+
 
 # --- Card Data ---
 var ranks = {
@@ -40,7 +45,7 @@ func get_scaled_value(rank_number, effect_type):
 		"max_ammo": return base_value
 		"phys_dmg", "fire_dmg", "cold_dmg", "lightning_dmg": return base_value
 		"crit_chance": return base_value * 0.35 # e.g., King = ~5% Crit Chance
-		"chaos_dmg": return Vector2(base_value, base_value * 2) # e.g., King = 14-28 Chaos
+		"chaos_dmg": return Vector2(1, base_value * 2) # e.g., King = 14-28 Chaos
 		"crit_dmg": return base_value * 2.5 # e.g., King = 35% Crit Damage
 		"special_dmg": return base_value * 0.6 # e.g., King = ~8% Special Damage
 		_: return base_value
@@ -63,33 +68,23 @@ func apply_passed_card(card_data):
 	var effect = card_data.effect_type
 	var value = get_scaled_value(card_data.rank_number, effect)
 	
+	# UPDATED: All cases are now filled out
 	match effect:
-		"max_health":
-			enemy_health_bonus += value
-		"phys_resist":
-			# Let's make this add to the 'all_resist' stat for enemies
-			enemy_all_resist += (value / 100.0)
-		"move_speed":
-			enemy_speed_multiplier += (value / 100.0)
-		"max_ammo":
-			enemy_size_multiplier += (value / 100.0)
-		"phys_dmg":
-			enemy_damage_bonus += value
-		"atk_speed":
-			pass # Player-only stat, does nothing for enemies
-		"reload_speed":
-			enemy_damage_bonus += value # We'll use reload for more damage
-		"crit_chance":
-			enemy_crit_chance += (value / 100.0)
-		"fire_dmg", "cold_dmg", "lightning_dmg":
-			pass # Player-only stats
-		"elemental_resist":
-			pass # Player-only stat
-		"chaos_dmg":
-			pass # Player-only stat
-		"crit_dmg":
-			enemy_crit_damage += (value / 100.0)
-		"special_dmg":
-			enemy_health_bonus += value * 2
-		"all_resist":
-			enemy_all_resist += (value / 100.0)
+		"max_health": enemy_health_bonus += value
+		"phys_resist": enemy_all_resist += value / 100.0 # Passed resist buffs all enemy resists
+		"move_speed": enemy_speed_multiplier += value / 100.0
+		"max_ammo": enemy_size_multiplier += value / 100.0
+		"phys_dmg": enemy_damage_bonus += value
+		"atk_speed": enemy_speed_multiplier += value / 100.0 # Player atk speed becomes enemy move speed
+		"reload_speed": enemy_damage_bonus += value
+		"crit_chance": enemy_crit_chance += value / 100.0
+		"fire_dmg": enemy_fire_damage_bonus += value
+		"cold_dmg": enemy_cold_damage_bonus += value
+		"lightning_dmg": enemy_lightning_damage_bonus += value
+		"elemental_resist": enemy_health_bonus += value * 2 # Passed elemental resist gives enemies health
+		"chaos_dmg": 
+			enemy_chaos_damage_bonus.x += value.x
+			enemy_chaos_damage_bonus.y += value.y
+		"crit_dmg": enemy_crit_damage += value / 100.0
+		"special_dmg": enemy_health_bonus += value * 2
+		"all_resist": enemy_all_resist += value / 100.0

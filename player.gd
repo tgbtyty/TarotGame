@@ -20,6 +20,10 @@ var physical_resist = 0.0
 var fire_resist = 0.0
 var cold_resist = 0.0
 var lightning_resist = 0.0
+var is_shocked = false
+var is_slowed = false
+var current_burn_dps = 0.0
+var burn_ticks_left = 0
 
 # --- Buffs ---
 var is_repelling = false
@@ -42,6 +46,9 @@ var can_use_special = true
 @onready var muzzle = $Muzzle
 @onready var dash_bar = $DashBar
 @onready var pushback_area = $PushbackArea
+@onready var burn_timer = $BurnTimer
+@onready var slow_timer = $SlowTimer
+@onready var shock_timer = $ShockTimer
 @onready var health_bar = get_node_or_null("/root/Main/HUD_Layer/HealthBar")
 @onready var special_label = get_node_or_null("/root/Main/HUD_Layer/SpecialCooldownLabel")
 @onready var ammo_label = get_node_or_null("/root/Main/HUD_Layer/AmmoLabel")
@@ -56,6 +63,9 @@ func _ready():
 	# UPDATED: Reset base damage to only be 5 physical damage
 	base_damage_info = DamageInfo.new()
 	base_damage_info.physical_damage = 5
+	burn_timer.timeout.connect(_on_burn_timer_timeout)
+	slow_timer.timeout.connect(_on_slow_timer_timeout)
+	shock_timer.timeout.connect(_on_shock_timer_timeout)
 	
 	if health_bar:
 		health_bar.max_value = max_health
@@ -171,13 +181,31 @@ func apply_card_buff(card_data):
 		"all_resist": # This is the Pentacles card effect for players
 			move_speed_multiplier += value / 100.0
 
-func take_damage(amount):
+func take_damage(damage_info: DamageInfo):
 	if is_repelling: return
 	
-	# Damage calculation for player taking damage could go here
-	var final_damage = amount * (100.0 / (100.0 + physical_resist))
-	current_health -= final_damage
+	var total_damage = 0.0
 	
+	# --- Calculate Damage Taken by Type ---
+	if damage_info.physical_damage > 0:
+		total_damage += damage_info.physical_damage * (100.0 / (100.0 + physical_resist))
+	if damage_info.fire_damage > 0:
+		var dmg = damage_info.fire_damage * (1.0 - min(fire_resist, 75) / 100.0)
+		total_damage += dmg
+		apply_burn(dmg)
+	if damage_info.cold_damage > 0:
+		total_damage += damage_info.cold_damage * (1.0 - min(cold_resist, 75) / 100.0)
+		apply_slow()
+	if damage_info.lightning_damage > 0:
+		total_damage += damage_info.lightning_damage * (1.0 - min(lightning_resist, 75) / 100.0)
+		apply_shock()
+	if damage_info.chaos_damage.y > 0:
+		total_damage += randf_range(damage_info.chaos_damage.x, damage_info.chaos_damage.y)
+
+	if is_shocked:
+		total_damage *= 1.1
+
+	current_health -= total_damage
 	if health_bar:
 		health_bar.value = current_health
 	
@@ -352,3 +380,41 @@ func apply_blue_orb_effect():
 	var tween = get_tree().create_tween()
 	tween.tween_interval(5.0) # Wait 5 seconds
 	tween.tween_callback(func(): is_repelling = false)
+
+func apply_burn(damage_amount):
+	var dps = damage_amount / 3.0
+	if dps > current_burn_dps:
+		current_burn_dps = dps
+	burn_ticks_left = 3
+	if burn_timer.is_stopped():
+		burn_timer.start(1.0)
+
+func _on_burn_timer_timeout():
+	if burn_ticks_left > 0:
+		take_damage(DamageInfo.new()) # Trigger pushback
+		current_health -= current_burn_dps
+		burn_ticks_left -= 1
+		if health_bar: health_bar.value = current_health
+	else:
+		burn_timer.stop()
+		current_burn_dps = 0.0
+
+func apply_slow():
+	if not is_slowed:
+		is_slowed = true
+		move_speed_multiplier *= 0.7 # Slow by 30%
+	# Always restart the timer to refresh the duration
+	slow_timer.start(2.0)
+	
+func _on_slow_timer_timeout():
+	if is_slowed:
+		is_slowed = false
+		move_speed_multiplier /= 0.7 # Revert the slow effect
+		
+		
+func apply_shock():
+	is_shocked = true
+	shock_timer.start(1.0)
+
+func _on_shock_timer_timeout():
+	is_shocked = false

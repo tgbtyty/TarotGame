@@ -19,7 +19,7 @@ func display_card(card_data):
 	var effect_type = card_data.effect_type
 	var value = GameManager.get_scaled_value(card_data.rank_number, effect_type)
 	
-	# UPDATED: We now use a match statement to generate only the text we need.
+	# UPDATED: This match statement replaces the old dictionaries and fixes the bug.
 	match effect_type:
 		"max_health":
 			chosen_effect_label.text = "If Chosen: +%d Max Health" % value
@@ -47,19 +47,19 @@ func display_card(card_data):
 			passed_effect_label.text = "If Passed, Enemies get: +%.1f%% Crit Chance" % value
 		"fire_dmg":
 			chosen_effect_label.text = "If Chosen: +%d Fire Damage" % value
-			passed_effect_label.text = "If Passed, this card has no effect."
+			passed_effect_label.text = "If Passed, Enemies get: +%d Fire Damage" % value
 		"cold_dmg":
 			chosen_effect_label.text = "If Chosen: +%d Cold Damage" % value
-			passed_effect_label.text = "If Passed, this card has no effect."
+			passed_effect_label.text = "If Passed, Enemies get: +%d Cold Damage" % value
 		"lightning_dmg":
 			chosen_effect_label.text = "If Chosen: +%d Lightning Damage" % value
-			passed_effect_label.text = "If Passed, this card has no effect."
+			passed_effect_label.text = "If Passed, Enemies get: +%d Lightning Damage" % value
 		"elemental_resist":
 			chosen_effect_label.text = "If Chosen: +%.1f%% to all Elemental Resists" % value
-			passed_effect_label.text = "If Passed, this card has no effect."
+			passed_effect_label.text = "If Passed, Enemies get: +%d Health" % (value * 2)
 		"chaos_dmg":
 			chosen_effect_label.text = "If Chosen: +%d-%d Chaos Damage" % [value.x, value.y]
-			passed_effect_label.text = "If Passed, this card has no effect."
+			passed_effect_label.text = "If Passed, Enemies get: +%d-%d Chaos Damage" % [value.x, value.y]
 		"crit_dmg":
 			chosen_effect_label.text = "If Chosen: +%d%% Crit Damage" % value
 			passed_effect_label.text = "If Passed, Enemies get: +%d%% Crit Damage" % value

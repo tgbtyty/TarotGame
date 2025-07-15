@@ -69,6 +69,12 @@ shape = SubResource("CircleShape2D_hqtel")
 position = Vector2(0, 5)
 shape = SubResource("CapsuleShape2D_hqtel")
 
+[node name="BurnTimer" type="Timer" parent="."]
+
+[node name="SlowTimer" type="Timer" parent="."]
+
+[node name="ShockTimer" type="Timer" parent="."]
+
 [connection signal="timeout" from="DashCooldown" to="." method="_on_dash_cooldown_timeout"]
 [connection signal="timeout" from="SpecialCooldown" to="." method="_on_special_cooldown_timeout"]
 [connection signal="timeout" from="ReloadTimer" to="." method="_on_reload_timer_timeout"]

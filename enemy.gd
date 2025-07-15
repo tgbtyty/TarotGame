@@ -5,6 +5,7 @@ signal died
 var base_speed = 125
 var base_health = 20
 var base_attack_damage = 20
+var damage_info: DamageInfo # NEW: Enemy now has its own damage package
 
 # --- Resistances ---
 var physical_resist = 0.0
@@ -40,13 +41,21 @@ func _ready():
 	slow_timer.timeout.connect(_on_slow_timer_timeout)
 	shock_timer.timeout.connect(_on_shock_timer_timeout)
 
+
 func initialize(round_number):
 	var round_health = base_health + (round_number - 1) * 1
 	health = round_health + GameManager.enemy_health_bonus
 	
 	speed = base_speed * GameManager.enemy_speed_multiplier
-	attack_damage = base_attack_damage + GameManager.enemy_damage_bonus
 	scale *= GameManager.enemy_size_multiplier
+	
+	# UPDATED: Build the enemy's damage info from base stats and global bonuses
+	damage_info = DamageInfo.new()
+	damage_info.physical_damage = base_attack_damage + GameManager.enemy_damage_bonus
+	damage_info.fire_damage = GameManager.enemy_fire_damage_bonus
+	damage_info.cold_damage = GameManager.enemy_cold_damage_bonus
+	damage_info.lightning_damage = GameManager.enemy_lightning_damage_bonus
+	damage_info.chaos_damage = GameManager.enemy_chaos_damage_bonus
 	
 	# Apply "all resist" from Pentacles cards
 	var all_res = GameManager.enemy_all_resist
@@ -190,9 +199,17 @@ func check_for_player_collision():
 			
 func attack():
 	can_attack = false
-	var final_attack_damage = attack_damage
-	if randf() < GameManager.enemy_crit_chance:
-		final_attack_damage *= (1.5 + GameManager.enemy_crit_damage)
 	
-	player.take_damage(final_attack_damage)
+	# UPDATED: Enemy now calculates crit and sends its whole damage package
+	var final_damage_info = damage_info.duplicate(true)
+	var is_crit = randf() < GameManager.enemy_crit_chance
+	if is_crit:
+		var crit_multiplier = 1.5 + GameManager.enemy_crit_damage
+		final_damage_info.physical_damage *= crit_multiplier
+		final_damage_info.fire_damage *= crit_multiplier
+		final_damage_info.cold_damage *= crit_multiplier
+		final_damage_info.lightning_damage *= crit_multiplier
+		final_damage_info.chaos_damage *= crit_multiplier
+
+	player.take_damage(final_damage_info)
 	get_tree().create_timer(0.5).timeout.connect(func(): can_attack = true)
