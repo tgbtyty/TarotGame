@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bgv8k0xwv34vp"]
+
+[ext_resource type="Script" uid="uid://bfo8mj1retpkg" path="res://damage_number.gd" id="1_w08oa"]
+
+[node name="DamageNumber" type="Label"]
+theme_override_font_sizes/font_size = 24
+script = ExtResource("1_w08oa")

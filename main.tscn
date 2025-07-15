@@ -11,7 +11,7 @@
 script = ExtResource("1_h2yge")
 
 [node name="Player" parent="." instance=ExtResource("1_0xm2m")]
-speed = 350
+speed = 100
 dash_speed = 900
 
 [node name="SpawnTimer" type="Timer" parent="."]

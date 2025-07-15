@@ -2,16 +2,24 @@ extends CharacterBody2D
 
 signal player_died
 
-@export var speed = 350
+@export var speed = 100 # UPDATED base speed
 @export var dash_speed = 900
 @export var bullet_scene: PackedScene
 
-# --- Player Stats ---
-var max_health = 100
+# --- Player Stats (NEW & UPDATED) ---
+var max_health = 100.0
 var current_health
-var base_bullet_damage = 5
+var move_speed_multiplier = 1.0
 var attack_speed_multiplier = 1.0
 var reload_speed_multiplier = 1.0
+var base_damage_info: DamageInfo
+var crit_chance = 0.0
+var crit_damage_multiplier = 1.5 # Base crits deal 150% damage (a 50% increase)
+var special_damage_multiplier = 1.0
+var physical_resist = 0.0
+var fire_resist = 0.0
+var cold_resist = 0.0
+var lightning_resist = 0.0
 
 # --- Buffs ---
 var is_repelling = false
@@ -40,9 +48,14 @@ var can_use_special = true
 @onready var reload_indicator = get_node_or_null("/root/Main/HUD_Layer/ReloadIndicator")
 
 
+
 func _ready():
 	current_health = max_health
 	current_ammo = magazine_size
+	
+	# UPDATED: Reset base damage to only be 5 physical damage
+	base_damage_info = DamageInfo.new()
+	base_damage_info.physical_damage = 5
 	
 	if health_bar:
 		health_bar.max_value = max_health
@@ -88,8 +101,10 @@ func _physics_process(_delta):
 	if is_dashing:
 		velocity = dash_direction * dash_speed
 	else:
+		# UPDATED: Final speed now includes movement speed multiplier
+		var final_speed = speed * move_speed_multiplier
 		var input_direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-		velocity = input_direction * speed
+		velocity = input_direction * final_speed
 		look_at(get_global_mouse_position())
 	
 	move_and_slide()
@@ -111,27 +126,58 @@ func _unhandled_input(event):
 		fan_the_hammer()
 
 func apply_card_buff(card_data):
-	match card_data.suit:
-		"Cups":
-			max_health += card_data.value
-			current_health += card_data.value
+	var effect = card_data.effect_type
+	var value = GameManager.get_scaled_value(card_data.rank_number, effect)
+	
+	match effect:
+		"max_health":
+			max_health += value
+			current_health += value
 			health_bar.max_value = max_health
 			health_bar.value = current_health
-		"Swords":
-			base_bullet_damage += card_data.value
-		"Pentacles":
-			var multiplier = card_data.value / 100.0
-			attack_speed_multiplier += multiplier
-			reload_speed_multiplier += multiplier
-		"Wands":
-			magazine_size += card_data.value
+		"phys_resist":
+			physical_resist += value
+		"move_speed":
+			move_speed_multiplier += value / 100.0
+		"max_ammo":
+			magazine_size += value
 			current_ammo = magazine_size
 			ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
+		"phys_dmg":
+			base_damage_info.physical_damage += value
+		"atk_speed":
+			attack_speed_multiplier += value / 100.0
+		"reload_speed":
+			reload_speed_multiplier += value / 100.0
+		"crit_chance":
+			crit_chance += value / 100.0
+		"fire_dmg":
+			base_damage_info.fire_damage += value
+		"cold_dmg":
+			base_damage_info.cold_damage += value
+		"lightning_dmg":
+			base_damage_info.lightning_damage += value
+		"elemental_resist":
+			fire_resist += value
+			cold_resist += value
+			lightning_resist += value
+		"chaos_dmg":
+			base_damage_info.chaos_damage.x += value.x
+			base_damage_info.chaos_damage.y += value.y
+		"crit_dmg":
+			crit_damage_multiplier += value / 100.0
+		"special_dmg":
+			special_damage_multiplier += value / 100.0
+		"all_resist": # This is the Pentacles card effect for players
+			move_speed_multiplier += value / 100.0
 
 func take_damage(amount):
-	if is_repelling: return # Blue orb makes you immune to touch damage
+	if is_repelling: return
 	
-	current_health -= amount
+	# Damage calculation for player taking damage could go here
+	var final_damage = amount * (100.0 / (100.0 + physical_resist))
+	current_health -= final_damage
+	
 	if health_bar:
 		health_bar.value = current_health
 	
@@ -168,18 +214,27 @@ func start_dash():
 
 
 func shoot():
-	if not bullet_scene:
-		print("ERROR: Bullet scene not set on player!")
-		return
+	if not bullet_scene: return
 	
 	current_ammo -= 1
 	can_shoot = false
-	if ammo_label:
-		ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
+	if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	
 	var bullet = bullet_scene.instantiate()
 	bullet.speed = 900
-	bullet.damage = base_bullet_damage
+	
+	# UPDATED: Damage is now calculated here, including crits
+	var final_damage = base_damage_info.duplicate(true) # Deep copy the resource
+	var is_crit = randf() < crit_chance
+	if is_crit:
+		final_damage.physical_damage *= crit_damage_multiplier
+		final_damage.fire_damage *= crit_damage_multiplier
+		final_damage.cold_damage *= crit_damage_multiplier
+		final_damage.lightning_damage *= crit_damage_multiplier
+		final_damage.chaos_damage *= crit_damage_multiplier
+	
+	bullet.damage_info = final_damage
+	
 	get_tree().root.add_child(bullet)
 	bullet.global_transform = muzzle.global_transform
 	
@@ -222,7 +277,8 @@ func fan_the_hammer():
 		if not bullet_scene: return
 		var bullet = bullet_scene.instantiate()
 		bullet.speed = 2000
-		bullet.damage = base_bullet_damage
+		# UPDATED: Special attack also uses the new damage package
+		bullet.damage_info = base_damage_info
 		get_tree().root.add_child(bullet)
 		
 		var spread = deg_to_rad(randf_range(-15, 15))
@@ -257,6 +313,17 @@ func _on_reload_timer_timeout():
 		reload_indicator.visible = false
 		reload_indicator.value = 0
 
+# --- Orb Collection Logic ---
+func _on_orb_collector_area_area_entered(area: Area2D) -> void:
+	if area.is_in_group("orbs"):
+		match area.orb_type:
+			"yellow":
+				apply_yellow_orb_effect()
+			"green":
+				apply_green_orb_effect()
+			"blue":
+				apply_blue_orb_effect()
+		area.queue_free()
 
 func apply_yellow_orb_effect():
 	# 1. Fill ammo
@@ -284,17 +351,4 @@ func apply_blue_orb_effect():
 	is_repelling = true
 	var tween = get_tree().create_tween()
 	tween.tween_interval(5.0) # Wait 5 seconds
-	# CORRECTED: This now properly sets 'is_repelling' to false.
-	tween.tween_callback(func(): is_repelling = false) # Turn off repel effect
-
-
-func _on_orb_collector_area_area_entered(area: Area2D) -> void:
-		if area.is_in_group("orbs"):
-			match area.orb_type:
-				"yellow":
-					apply_yellow_orb_effect()
-				"green":
-					apply_green_orb_effect()
-				"blue":
-					apply_blue_orb_effect()
-			area.queue_free()
+	tween.tween_callback(func(): is_repelling = false)
