@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://y4yyyj2qeuci" path="res://card_ui.gd" id="1_gf2xd"]
 
 [node name="CardUI" type="PanelContainer"]
+offset_right = 65.0
+offset_bottom = 210.0
 scale = Vector2(1.90476, 1.86607)
 mouse_filter = 2
 script = ExtResource("1_gf2xd")

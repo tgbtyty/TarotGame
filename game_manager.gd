@@ -45,7 +45,7 @@ func get_scaled_value(rank_number, effect_type):
 		"max_ammo": return base_value
 		"phys_dmg", "fire_dmg", "cold_dmg", "lightning_dmg": return base_value
 		"crit_chance": return base_value * 0.35 # e.g., King = ~5% Crit Chance
-		"chaos_dmg": return Vector2(1, base_value * 2) # e.g., King = 14-28 Chaos
+		"chaos_dmg": return Vector2(0, base_value * 2) # e.g., King = 14-28 Chaos
 		"crit_dmg": return base_value * 2.5 # e.g., King = 35% Crit Damage
 		"special_dmg": return base_value * 0.6 # e.g., King = ~8% Special Damage
 		_: return base_value
