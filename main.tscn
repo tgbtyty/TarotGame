@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://c8ht66rbhourv"]
+[gd_scene load_steps=8 format=3 uid="uid://c8ht66rbhourv"]
 
 [ext_resource type="PackedScene" uid="uid://de6cyqhvsvgbu" path="res://player.tscn" id="1_0xm2m"]
 [ext_resource type="Script" uid="uid://c0dab3l75v0c3" path="res://main.gd" id="1_h2yge"]
 [ext_resource type="Texture2D" uid="uid://bbnh4ptxtybxg" path="res://icon.svg" id="3_h2yge"]
+[ext_resource type="PackedScene" uid="uid://ca5ujtmmoiu25" path="res://weapon_reward.tscn" id="4_272bh"]
 [ext_resource type="PackedScene" uid="uid://bt1pv8aiudbkh" path="res://pause_menu.tscn" id="4_lquwl"]
 [ext_resource type="PackedScene" uid="uid://cg6krh8ielc8b" path="res://game_over_screen.tscn" id="5_7mycd"]
 [ext_resource type="PackedScene" uid="uid://0h83bol220km" path="res://card_selection.tscn" id="6_7mycd"]
@@ -11,8 +12,6 @@
 script = ExtResource("1_h2yge")
 
 [node name="Player" parent="." instance=ExtResource("1_0xm2m")]
-speed = 100
-dash_speed = 900
 
 [node name="SpawnTimer" type="Timer" parent="."]
 wait_time = 2.0
@@ -82,6 +81,10 @@ text = "Round Complete!"
 [node name="Card_Layer" type="CanvasLayer" parent="."]
 
 [node name="CardSelectionScreen" parent="Card_Layer" instance=ExtResource("6_7mycd")]
+process_mode = 3
+visible = false
+
+[node name="WeaponReward" parent="." instance=ExtResource("4_272bh")]
 process_mode = 3
 visible = false
 

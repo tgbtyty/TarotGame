@@ -2,50 +2,54 @@ extends CharacterBody2D
 
 signal player_died
 
-@export var speed = 100 # UPDATED base speed
+@export var speed = 100
 @export var dash_speed = 900
 @export var bullet_scene: PackedScene
 
-# --- Player Stats (NEW & UPDATED) ---
-var max_health = 100.0
-var current_health
-var move_speed_multiplier = 1.0
-var attack_speed_multiplier = 1.0
-var reload_speed_multiplier = 1.0
-var base_damage_info: DamageInfo
-var crit_chance = 0.0
-var crit_damage_multiplier = 1.5 # Base crits deal 150% damage (a 50% increase)
-var special_damage_multiplier = 1.0
-var physical_resist = 0.0
-var fire_resist = 0.0
-var cold_resist = 0.0
-var lightning_resist = 0.0
+# --- Core Data ---
+var current_weapon: WeaponData
+var total_buffs: Dictionary = {
+	"max_health": 0.0, "phys_resist": 0.0, "move_speed": 0.0, "max_ammo": 0.0,
+	"phys_dmg": 0.0, "atk_speed": 0.0, "reload_speed": 0.0, "crit_chance": 0.0,
+	"fire_dmg": 0.0, "cold_dmg": 0.0, "lightning_dmg": 0.0, "elemental_resist": 0.0,
+	"chaos_dmg": Vector2.ZERO, "crit_dmg": 0.0, "special_dmg": 0.0
+}
+
+# --- Final Calculated Stats (dynamic) ---
+var max_health: float
+var current_health: float
+var magazine_size: int
+var current_ammo: int
+var reload_time: float
+var fire_rate: float
+var final_damage_info: DamageInfo
+var crit_chance: float
+var crit_damage_multiplier: float
+var special_damage_multiplier: float
+var move_speed_multiplier: float
+var physical_resist: float
+var fire_resist: float
+var cold_resist: float
+var lightning_resist: float
+
+# --- Status & State ---
+var is_repelling = false
 var is_shocked = false
 var is_slowed = false
 var current_burn_dps = 0.0
 var burn_ticks_left = 0
-
-# --- Buffs ---
-var is_repelling = false
-
-# --- Dash Variables ---
-var dash_direction = Vector2.ZERO
 var is_dashing = false
 var can_dash = true
-
-# --- Gun Variables ---
-var magazine_size = 20
-var current_ammo
 var can_shoot = true
 var is_reloading = false
-
-# --- Special Variables ---
 var can_use_special = true
+var dash_direction = Vector2.ZERO
 
 # --- Node References ---
 @onready var muzzle = $Muzzle
 @onready var dash_bar = $DashBar
 @onready var pushback_area = $PushbackArea
+@onready var sniper_tracer = $Line2D
 @onready var burn_timer = $BurnTimer
 @onready var slow_timer = $SlowTimer
 @onready var shock_timer = $ShockTimer
@@ -55,63 +59,102 @@ var can_use_special = true
 @onready var reload_indicator = get_node_or_null("/root/Main/HUD_Layer/ReloadIndicator")
 
 
-
 func _ready():
-	current_health = max_health
-	current_ammo = magazine_size
-	
-	# UPDATED: Reset base damage to only be 5 physical damage
-	base_damage_info = DamageInfo.new()
-	base_damage_info.physical_damage = 5
+	equip_weapon(GameManager.weapon_database["Pistol"])
 	burn_timer.timeout.connect(_on_burn_timer_timeout)
 	slow_timer.timeout.connect(_on_slow_timer_timeout)
 	shock_timer.timeout.connect(_on_shock_timer_timeout)
-	
-	if health_bar:
-		health_bar.max_value = max_health
-		health_bar.value = current_health
-	
-	if special_label:
-		special_label.text = "Special: Ready"
-	
-	if dash_bar:
-		dash_bar.max_value = $DashCooldown.wait_time
-		dash_bar.value = dash_bar.max_value
-		dash_bar.visible = false
-		
-	if ammo_label:
-		ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	if reload_indicator:
 		reload_indicator.value = 0
 		reload_indicator.visible = false
 
+func recalculate_stats():
+	var weapon_mod = current_weapon.stat_modifier_multiplier
+	
+	max_health = 100.0 + total_buffs.max_health
+	move_speed_multiplier = 1.0 + total_buffs.move_speed
+	magazine_size = current_weapon.base_max_ammo + int(total_buffs.max_ammo * weapon_mod)
+	reload_time = current_weapon.base_reload_time / (1.0 + (total_buffs.reload_speed * weapon_mod))
+	fire_rate = current_weapon.base_fire_rate / (1.0 + (total_buffs.atk_speed * weapon_mod))
+	crit_chance = total_buffs.crit_chance
+	crit_damage_multiplier = 1.5 + total_buffs.crit_dmg
+	special_damage_multiplier = 1.0 + total_buffs.special_dmg
+	
+	physical_resist = total_buffs.phys_resist
+	var elemental_res = total_buffs.elemental_resist
+	fire_resist = elemental_res
+	cold_resist = elemental_res
+	lightning_resist = elemental_res
+	
+	final_damage_info = current_weapon.base_damage.duplicate(true)
+	var added_phys_dmg = total_buffs.phys_dmg * current_weapon.added_damage_multiplier
+	final_damage_info.physical_damage += added_phys_dmg
+	final_damage_info.fire_damage += total_buffs.fire_dmg
+	final_damage_info.cold_damage += total_buffs.cold_dmg
+	final_damage_info.lightning_damage += total_buffs.lightning_dmg
+	final_damage_info.chaos_damage += total_buffs.chaos_dmg
+	
+	if health_bar:
+		health_bar.max_value = max_health
+		health_bar.value = current_health
+	if ammo_label:
+		ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
+	if dash_bar:
+		dash_bar.max_value = $DashCooldown.wait_time
+		dash_bar.visible = false
 
+func equip_weapon(new_weapon: WeaponData):
+	current_weapon = new_weapon
+	recalculate_stats()
+	current_health = max_health
+	current_ammo = magazine_size
+	
+func scrap_weapon():
+	GameManager.total_tokens += 1
+	print("Scrapped weapon for 1 token. Total tokens: ", GameManager.total_tokens)
+
+func apply_card_buff(card_data):
+	var effect = card_data.effect_type
+	var value = GameManager.get_scaled_value(card_data.rank_number, effect)
+	
+	match effect:
+		"max_health": total_buffs.max_health += value
+		"phys_resist": total_buffs.phys_resist += value
+		"move_speed": total_buffs.move_speed += value / 100.0
+		"max_ammo": total_buffs.max_ammo += value
+		"phys_dmg": total_buffs.phys_dmg += value
+		"atk_speed": total_buffs.atk_speed += value / 100.0
+		"reload_speed": total_buffs.reload_speed += value / 100.0
+		"crit_chance": total_buffs.crit_chance += value / 100.0
+		"fire_dmg": total_buffs.fire_dmg += value
+		"cold_dmg": total_buffs.cold_dmg += value
+		"lightning_dmg": total_buffs.lightning_dmg += value
+		"elemental_resist": total_buffs.elemental_resist += value
+		"chaos_dmg": total_buffs.chaos_dmg += value
+		"crit_dmg": total_buffs.crit_dmg += value / 100.0
+		"special_dmg": total_buffs.special_dmg += value / 100.0
+		"all_resist": move_speed_multiplier += value / 100.0
+			
+	recalculate_stats()
+	
 func _physics_process(_delta):
-	# --- Handle Autofire ---
 	if Input.is_action_pressed("shoot") and can_shoot and current_ammo > 0 and not is_reloading:
 		shoot()
-		
-	# --- Handle Blue Orb Repel ---
 	if is_repelling:
 		push_back_nearby_enemies()
 	
-	# Update UI elements every frame
 	if special_label and not $SpecialCooldown.is_stopped():
 		special_label.text = "Special: %.1fs" % $SpecialCooldown.time_left
-	
 	if dash_bar and dash_bar.visible:
 		dash_bar.value = $DashCooldown.time_left
-		
 	if is_reloading and reload_indicator:
 		var reload_timer = $ReloadTimer
 		var time_passed = reload_timer.wait_time - reload_timer.time_left
 		reload_indicator.value = (time_passed / reload_timer.wait_time) * 100
 
-	# Movement logic
 	if is_dashing:
 		velocity = dash_direction * dash_speed
 	else:
-		# UPDATED: Final speed now includes movement speed multiplier
 		var final_speed = speed * move_speed_multiplier
 		var input_direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 		velocity = input_direction * final_speed
@@ -123,70 +166,19 @@ func _physics_process(_delta):
 	global_position.x = clamp(global_position.x, 0, screen_size.x)
 	global_position.y = clamp(global_position.y, 0, screen_size.y)
 
-
 func _unhandled_input(event):
-	# Shooting logic was moved to _physics_process for autofire
 	if event.is_action_pressed("dash") and not is_dashing and can_dash:
 		start_dash()
-	
 	if event.is_action_pressed("reload") and not is_reloading and current_ammo < magazine_size:
 		reload_gun()
-	
 	if event.is_action_pressed("special") and can_use_special and current_ammo > 0 and not is_reloading:
 		fan_the_hammer()
-
-func apply_card_buff(card_data):
-	var effect = card_data.effect_type
-	var value = GameManager.get_scaled_value(card_data.rank_number, effect)
-	
-	match effect:
-		"max_health":
-			max_health += value
-			current_health += value
-			health_bar.max_value = max_health
-			health_bar.value = current_health
-		"phys_resist":
-			physical_resist += value
-		"move_speed":
-			move_speed_multiplier += value / 100.0
-		"max_ammo":
-			magazine_size += value
-			current_ammo = magazine_size
-			ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
-		"phys_dmg":
-			base_damage_info.physical_damage += value
-		"atk_speed":
-			attack_speed_multiplier += value / 100.0
-		"reload_speed":
-			reload_speed_multiplier += value / 100.0
-		"crit_chance":
-			crit_chance += value / 100.0
-		"fire_dmg":
-			base_damage_info.fire_damage += value
-		"cold_dmg":
-			base_damage_info.cold_damage += value
-		"lightning_dmg":
-			base_damage_info.lightning_damage += value
-		"elemental_resist":
-			fire_resist += value
-			cold_resist += value
-			lightning_resist += value
-		"chaos_dmg":
-			base_damage_info.chaos_damage.x += value.x
-			base_damage_info.chaos_damage.y += value.y
-		"crit_dmg":
-			crit_damage_multiplier += value / 100.0
-		"special_dmg":
-			special_damage_multiplier += value / 100.0
-		"all_resist": # This is the Pentacles card effect for players
-			move_speed_multiplier += value / 100.0
 
 func take_damage(damage_info: DamageInfo):
 	if is_repelling: return
 	
 	var total_damage = 0.0
 	
-	# --- Calculate Damage Taken by Type ---
 	if damage_info.physical_damage > 0:
 		total_damage += damage_info.physical_damage * (100.0 / (100.0 + physical_resist))
 	if damage_info.fire_damage > 0:
@@ -206,8 +198,7 @@ func take_damage(damage_info: DamageInfo):
 		total_damage *= 1.1
 
 	current_health -= total_damage
-	if health_bar:
-		health_bar.value = current_health
+	if health_bar: health_bar.value = current_health
 	
 	push_back_nearby_enemies()
 	
@@ -224,89 +215,144 @@ func push_back_nearby_enemies():
 			var push_direction = (body.global_position - global_position).normalized()
 			body.apply_knockback(push_direction)
 
-
 func start_dash():
 	is_dashing = true
 	can_dash = false
 	$DashCooldown.start()
-	if dash_bar:
-		dash_bar.visible = true
-	
+	if dash_bar: dash_bar.visible = true
 	var input_direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if input_direction != Vector2.ZERO:
 		dash_direction = input_direction.normalized()
 	else:
 		dash_direction = Vector2.RIGHT.rotated(global_rotation)
-	
 	get_tree().create_timer(0.2).timeout.connect(func(): is_dashing = false)
 
-
 func shoot():
-	if not bullet_scene: return
+	if not can_shoot or is_reloading or current_ammo <= 0: return
 	
-	current_ammo -= 1
 	can_shoot = false
+	current_ammo -= 1
 	if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	
-	var bullet = bullet_scene.instantiate()
-	bullet.speed = 900
+	match current_weapon.weapon_name:
+		"Pistol":
+			fire_single_bullet(900, 1)
+		"Shotgun":
+			for i in 4:
+				fire_single_bullet(1000, 1, 25.0)
+		"Sniper":
+			fire_sniper_raycast()
+			
+	get_tree().create_timer(fire_rate).timeout.connect(func(): can_shoot = true)
+	if current_ammo == 0: reload_gun()
+
+func fire_sniper_raycast():
+	var space_state = get_world_2d().direct_space_state
+	var ray_origin = muzzle.global_position
+	var ray_target = ray_origin + (get_global_mouse_position() - ray_origin).normalized() * 2000
 	
-	# UPDATED: Damage is now calculated here, including crits
-	var final_damage = base_damage_info.duplicate(true) # Deep copy the resource
+	var shot_damage = final_damage_info.duplicate(true)
 	var is_crit = randf() < crit_chance
 	if is_crit:
-		final_damage.physical_damage *= crit_damage_multiplier
-		final_damage.fire_damage *= crit_damage_multiplier
-		final_damage.cold_damage *= crit_damage_multiplier
-		final_damage.lightning_damage *= crit_damage_multiplier
-		final_damage.chaos_damage *= crit_damage_multiplier
+		shot_damage.physical_damage *= crit_damage_multiplier
+		shot_damage.fire_damage *= crit_damage_multiplier
+		shot_damage.cold_damage *= crit_damage_multiplier
+		shot_damage.lightning_damage *= crit_damage_multiplier
+		shot_damage.chaos_damage *= crit_damage_multiplier
+
+	var enemies_to_exclude = []
+	var tracer_points = [ray_origin] # Start the tracer at the muzzle
 	
-	bullet.damage_info = final_damage
+	while true:
+		var query = PhysicsRayQueryParameters2D.create(ray_origin, ray_target, 1 << 1, enemies_to_exclude)
+		var result = space_state.intersect_ray(query)
+		
+		if result.is_empty():
+			tracer_points.append(ray_target)
+			break
+		
+		var collider = result.collider
+		if collider.is_in_group("enemies"):
+			collider.take_damage(shot_damage)
+			enemies_to_exclude.append(collider)
+			ray_origin = result.position + (ray_target - ray_origin).normalized()
+		else:
+			tracer_points.append(result.position)
+			break
+			
+	# --- Visual Tracer Effect ---
+	sniper_tracer.clear_points()
+	# UPDATED: Use to_local() to correctly transform global points into the Line2D's space
+	for point in tracer_points:
+		sniper_tracer.add_point(sniper_tracer.to_local(point))
+	
+	sniper_tracer.visible = true
+	get_tree().create_timer(0.05).timeout.connect(func(): sniper_tracer.visible = false)
+
+
+
+func fire_single_bullet(bullet_speed: float, pierce: int, spread_degrees: float = 0.0):
+	if not bullet_scene: return
+	var bullet = bullet_scene.instantiate()
+	bullet.speed = bullet_speed
+	bullet.pierce_count = pierce
+	
+	var shot_damage = final_damage_info.duplicate(true)
+	if current_weapon.added_damage_divisor > 1.0:
+		shot_damage.physical_damage = ceil(shot_damage.physical_damage / current_weapon.added_damage_divisor)
+	
+	var is_crit = randf() < crit_chance
+	if is_crit:
+		shot_damage.physical_damage *= crit_damage_multiplier
+		shot_damage.fire_damage *= crit_damage_multiplier
+		shot_damage.cold_damage *= crit_damage_multiplier
+		shot_damage.lightning_damage *= crit_damage_multiplier
+		shot_damage.chaos_damage *= crit_damage_multiplier
+	
+	bullet.damage_info = shot_damage
+	
+	var final_rotation = muzzle.global_rotation + deg_to_rad(randf_range(-spread_degrees/2, spread_degrees/2))
 	
 	get_tree().root.add_child(bullet)
-	bullet.global_transform = muzzle.global_transform
-	
-	var fire_rate = 0.5 / attack_speed_multiplier
-	get_tree().create_timer(fire_rate).timeout.connect(func(): can_shoot = true)
-	
-	if current_ammo == 0 and not is_reloading:
-		reload_gun()
-
+	bullet.global_position = muzzle.global_position
+	bullet.global_rotation = final_rotation
 
 func reload_gun():
-	# Don't interrupt a reload
 	if is_reloading: return
-	
 	is_reloading = true
-	$ReloadTimer.wait_time = 1.0 / reload_speed_multiplier
+	$ReloadTimer.wait_time = reload_time
 	$ReloadTimer.start()
-	
-	if ammo_label:
-		ammo_label.text = "Reloading..."
-	if reload_indicator:
-		reload_indicator.visible = true
-
+	if ammo_label: ammo_label.text = "Reloading..."
+	if reload_indicator: reload_indicator.visible = true
 
 func fan_the_hammer():
 	can_use_special = false
 	can_shoot = false
 	$SpecialCooldown.start()
-	
-	if special_label:
-		special_label.text = "Special: 6.0s"
+	if special_label: special_label.text = "Special: 6.0s"
 	
 	var bullets_to_fire = current_ammo
 	current_ammo = 0
-	
-	if ammo_label:
-		ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
+	if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	
 	for i in bullets_to_fire:
 		if not bullet_scene: return
+		
+		var final_damage = final_damage_info.duplicate(true)
+		var is_crit = randf() < crit_chance
+		var final_multiplier = special_damage_multiplier
+		if is_crit:
+			final_multiplier *= crit_damage_multiplier
+		
+		final_damage.physical_damage *= final_multiplier
+		final_damage.fire_damage *= final_multiplier
+		final_damage.cold_damage *= final_multiplier
+		final_damage.lightning_damage *= final_multiplier
+		final_damage.chaos_damage *= final_multiplier
+		
 		var bullet = bullet_scene.instantiate()
 		bullet.speed = 2000
-		# UPDATED: Special attack also uses the new damage package
-		bullet.damage_info = base_damage_info
+		bullet.damage_info = final_damage
 		get_tree().root.add_child(bullet)
 		
 		var spread = deg_to_rad(randf_range(-15, 15))
@@ -318,67 +364,55 @@ func fan_the_hammer():
 	reload_gun()
 	can_shoot = true
 
-
 func _on_special_cooldown_timeout():
 	can_use_special = true
-	if special_label:
-		special_label.text = "Special: Ready"
-
+	if special_label: special_label.text = "Special: Ready"
 
 func _on_dash_cooldown_timeout():
 	can_dash = true
-	if dash_bar:
-		dash_bar.visible = false
-
+	if dash_bar: dash_bar.visible = false
 
 func _on_reload_timer_timeout():
 	is_reloading = false
 	current_ammo = magazine_size
-	
-	if ammo_label:
-		ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
+	if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	if reload_indicator:
 		reload_indicator.visible = false
 		reload_indicator.value = 0
 
-# --- Orb Collection Logic ---
 func _on_orb_collector_area_area_entered(area: Area2D) -> void:
 	if area.is_in_group("orbs"):
 		match area.orb_type:
-			"yellow":
-				apply_yellow_orb_effect()
-			"green":
-				apply_green_orb_effect()
-			"blue":
-				apply_blue_orb_effect()
+			"yellow": apply_yellow_orb_effect()
+			"green": apply_green_orb_effect()
+			"blue": apply_blue_orb_effect()
 		area.queue_free()
 
 func apply_yellow_orb_effect():
-	# 1. Fill ammo
 	if not is_reloading: current_ammo = magazine_size
 	if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	
-	# 2. Double attack speed for 3 seconds
-	attack_speed_multiplier *= 2
+	total_buffs.atk_speed += 1.0
+	recalculate_stats()
+	
 	var tween = get_tree().create_tween()
-	tween.tween_interval(3.0) # Wait 3 seconds
-	tween.tween_callback(func(): attack_speed_multiplier /= 2) # Revert speed
-	tween.tween_callback(func(): # 3. Fill ammo again
+	tween.tween_interval(3.0)
+	tween.tween_callback(func():
+		total_buffs.atk_speed -= 1.0
+		recalculate_stats()
 		if not is_reloading: current_ammo = magazine_size
 		if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	)
 
 func apply_green_orb_effect():
 	var heal_amount = max_health * 0.25
-	# min() prevents overhealing
 	current_health = min(max_health, current_health + heal_amount)
-	if health_bar:
-		health_bar.value = current_health
+	if health_bar: health_bar.value = current_health
 
 func apply_blue_orb_effect():
 	is_repelling = true
 	var tween = get_tree().create_tween()
-	tween.tween_interval(5.0) # Wait 5 seconds
+	tween.tween_interval(5.0)
 	tween.tween_callback(func(): is_repelling = false)
 
 func apply_burn(damage_amount):
@@ -386,15 +420,20 @@ func apply_burn(damage_amount):
 	if dps > current_burn_dps:
 		current_burn_dps = dps
 	burn_ticks_left = 3
-	if burn_timer.is_stopped():
-		burn_timer.start(1.0)
+	if burn_timer.is_stopped(): burn_timer.start(1.0)
 
 func _on_burn_timer_timeout():
 	if burn_ticks_left > 0:
-		take_damage(DamageInfo.new()) # Trigger pushback
+		var empty_damage = DamageInfo.new()
+		take_damage(empty_damage) # Trigger pushback without damage
 		current_health -= current_burn_dps
 		burn_ticks_left -= 1
 		if health_bar: health_bar.value = current_health
+		if current_health <= 0:
+			if not is_queued_for_deletion():
+				player_died.emit()
+				hide()
+				$CollisionShape2D.set_deferred("disabled", true)
 	else:
 		burn_timer.stop()
 		current_burn_dps = 0.0
@@ -402,15 +441,13 @@ func _on_burn_timer_timeout():
 func apply_slow():
 	if not is_slowed:
 		is_slowed = true
-		move_speed_multiplier *= 0.7 # Slow by 30%
-	# Always restart the timer to refresh the duration
+		move_speed_multiplier *= 0.7
 	slow_timer.start(2.0)
 	
 func _on_slow_timer_timeout():
 	if is_slowed:
 		is_slowed = false
-		move_speed_multiplier /= 0.7 # Revert the slow effect
-		
+		move_speed_multiplier /= 0.7
 		
 func apply_shock():
 	is_shocked = true

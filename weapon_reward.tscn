@@ -1,0 +1,59 @@
+[gd_scene load_steps=2 format=3 uid="uid://ca5ujtmmoiu25"]
+
+[ext_resource type="Script" uid="uid://d2ulb5newint3" path="res://weapon_reward.gd" id="1_rwbwk"]
+
+[node name="WeaponReward" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_rwbwk")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="NameLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 160.0
+offset_top = 125.0
+offset_right = 389.0
+offset_bottom = 178.0
+text = "NAME"
+
+[node name="DescLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 152.0
+offset_top = 233.0
+offset_right = 367.0
+offset_bottom = 409.0
+text = "Desci"
+
+[node name="StatsLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 428.0
+offset_top = 116.0
+offset_right = 658.0
+offset_bottom = 179.0
+text = "STATS"
+
+[node name="EquipButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 444.0
+offset_top = 404.0
+offset_right = 667.0
+offset_bottom = 469.0
+text = "Equip"
+
+[node name="ScrapButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 179.0
+offset_top = 423.0
+offset_right = 280.0
+offset_bottom = 450.0
+text = "Scrap"
+
+[connection signal="pressed" from="EquipButton" to="." method="_on_equip_button_pressed"]
+[connection signal="pressed" from="ScrapButton" to="." method="_on_scrap_button_pressed"]

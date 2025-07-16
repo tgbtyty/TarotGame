@@ -1,6 +1,7 @@
 extends Node
 
 var total_kills = 0
+var total_tokens = 0
 
 # --- Global Enemy Stat Modifiers ---
 var enemy_health_bonus = 0
@@ -15,6 +16,8 @@ var enemy_cold_damage_bonus = 0.0
 var enemy_lightning_damage_bonus = 0.0
 var enemy_chaos_damage_bonus = Vector2.ZERO
 
+# --- Weapon Database ---
+var weapon_database: Dictionary = {}
 
 # --- Card Data ---
 var ranks = {
@@ -30,6 +33,10 @@ var suit_effects = {
 	"Pentacles": ["chaos_dmg", "crit_dmg", "special_dmg", "all_resist"]
 }
 
+func _ready():
+	# NEW: This function now builds our weapon database at the start of the game
+	build_weapon_database()
+	
 # NEW: This function "tempers" the raw card value based on the effect type
 func get_scaled_value(rank_number, effect_type):
 	var base_value = 0
@@ -44,7 +51,7 @@ func get_scaled_value(rank_number, effect_type):
 		"move_speed", "atk_speed", "reload_speed": return base_value # e.g., King = 14% Speed
 		"max_ammo": return base_value
 		"phys_dmg", "fire_dmg", "cold_dmg", "lightning_dmg": return base_value
-		"crit_chance": return base_value * 0.35 # e.g., King = ~5% Crit Chance
+		"crit_chance": return base_value * 0.45 # e.g., King = ~5% Crit Chance
 		"chaos_dmg": return Vector2(0, base_value * 2) # e.g., King = 14-28 Chaos
 		"crit_dmg": return base_value * 2.5 # e.g., King = 35% Crit Damage
 		"special_dmg": return base_value * 0.6 # e.g., King = ~8% Special Damage
@@ -88,3 +95,48 @@ func apply_passed_card(card_data):
 		"crit_dmg": enemy_crit_damage += value / 100.0
 		"special_dmg": enemy_health_bonus += value * 2
 		"all_resist": enemy_all_resist += value / 100.0
+func build_weapon_database():
+	# PISTOL (Base Gun)
+	var pistol_dmg = DamageInfo.new()
+	pistol_dmg.physical_damage = 5
+	var pistol = WeaponData.new()
+	pistol.weapon_name = "Pistol"
+	pistol.description = "A reliable sidearm. Standard performance."
+	pistol.base_max_ammo = 20
+	pistol.base_reload_time = 1.0
+	pistol.base_fire_rate = 0.5
+	pistol.base_damage = pistol_dmg
+	weapon_database["Pistol"] = pistol
+	
+	# SHOTGUN
+	var shotgun_dmg = DamageInfo.new()
+	shotgun_dmg.physical_damage = 20
+	var shotgun = WeaponData.new()
+	shotgun.weapon_name = "Shotgun"
+	shotgun.description = "Fires 4 pellets in a cone. Added damage is divided among pellets."
+	shotgun.base_max_ammo = 2
+	shotgun.base_reload_time = 0.75
+	shotgun.base_fire_rate = 0.3
+	shotgun.base_damage = shotgun_dmg
+	shotgun.added_damage_divisor = 4.0 # Divides added damage by 4
+	weapon_database["Shotgun"] = shotgun
+	
+	# SNIPER
+	var sniper_dmg = DamageInfo.new()
+	sniper_dmg.physical_damage = 50
+	var sniper = WeaponData.new()
+	sniper.weapon_name = "Sniper"
+	sniper.description = "A slow, powerful shot that pierces all enemies. Added damage is doubled. Speed/ammo modifiers are halved."
+	sniper.base_max_ammo = 1
+	sniper.base_reload_time = 1.0
+	sniper.base_fire_rate = 0.5
+	sniper.base_damage = sniper_dmg
+	sniper.added_damage_multiplier = 2.0 # Doubles added damage
+	sniper.stat_modifier_multiplier = 0.5 # Halves buffs to speed/ammo
+	weapon_database["Sniper"] = sniper
+
+func get_random_reward_weapon(current_weapon_name):
+	var weapon_pool = weapon_database.keys()
+	weapon_pool.erase(current_weapon_name) # Can't get a reward for the weapon you already have
+	var reward_weapon_name = weapon_pool.pick_random()
+	return weapon_database[reward_weapon_name]
