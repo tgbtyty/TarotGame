@@ -2,7 +2,7 @@ extends CharacterBody2D
 
 signal player_died
 
-@export var speed = 100
+@export var speed = 150
 @export var dash_speed = 900
 @export var bullet_scene: PackedScene
 
@@ -14,6 +14,7 @@ var total_buffs: Dictionary = {
 	"fire_dmg": 0.0, "cold_dmg": 0.0, "lightning_dmg": 0.0, "elemental_resist": 0.0,
 	"chaos_dmg": Vector2.ZERO, "crit_dmg": 0.0, "special_dmg": 0.0
 }
+var damage_reduction_multiplier = 1.0 #herald of ash
 
 # --- Final Calculated Stats (dynamic) ---
 var max_health: float
@@ -53,6 +54,9 @@ var dash_direction = Vector2.ZERO
 @onready var burn_timer = $BurnTimer
 @onready var slow_timer = $SlowTimer
 @onready var shock_timer = $ShockTimer
+@onready var burn_aura = $BurnAura # NEW
+@onready var damage_reduc_timer = $DamageReducTimer # NEW
+@onready var burn_aura_timer = $BurnAuraTimer # NEW
 @onready var health_bar = get_node_or_null("/root/Main/HUD_Layer/HealthBar")
 @onready var special_label = get_node_or_null("/root/Main/HUD_Layer/SpecialCooldownLabel")
 @onready var ammo_label = get_node_or_null("/root/Main/HUD_Layer/AmmoLabel")
@@ -64,6 +68,8 @@ func _ready():
 	burn_timer.timeout.connect(_on_burn_timer_timeout)
 	slow_timer.timeout.connect(_on_slow_timer_timeout)
 	shock_timer.timeout.connect(_on_shock_timer_timeout)
+	damage_reduc_timer.timeout.connect(_on_damage_reduc_timer_timeout) # NEW
+	burn_aura_timer.timeout.connect(_on_burn_aura_timer_timeout) # NEW
 	if reload_indicator:
 		reload_indicator.value = 0
 		reload_indicator.visible = false
@@ -196,7 +202,9 @@ func take_damage(damage_info: DamageInfo):
 
 	if is_shocked:
 		total_damage *= 1.1
-
+		
+	
+	total_damage *= damage_reduction_multiplier #Herald of Ash Avatar
 	current_health -= total_damage
 	if health_bar: health_bar.value = current_health
 	
@@ -301,6 +309,23 @@ func fire_single_bullet(bullet_speed: float, pierce: int, spread_degrees: float 
 	if current_weapon.added_damage_divisor > 1.0:
 		shot_damage.physical_damage = ceil(shot_damage.physical_damage / current_weapon.added_damage_divisor)
 	
+	# KEYSTONE: "Become the Inferno" hijacks the damage calculation.
+	if GameManager.owned_keystones.has("leo_inferno"):
+		# Calculate the sum of all non-fire damage types.
+		var total_other_damage = shot_damage.physical_damage + shot_damage.cold_damage + shot_damage.lightning_damage + randf_range(shot_damage.chaos_damage.x, shot_damage.chaos_damage.y)
+		
+		# Check for the Avatar version of the keystone.
+		if GameManager.is_avatar and GameManager.avatar_of == "Leo":
+			shot_damage.fire_damage += total_other_damage # Avatar: Convert all damage to fire.
+		else:
+			shot_damage.fire_damage = (shot_damage.fire_damage * 2.0) - total_other_damage # Base: Double fire, but other types reduce it.
+		
+		# Zero out all other damage types.
+		shot_damage.physical_damage = 0
+		shot_damage.cold_damage = 0
+		shot_damage.lightning_damage = 0
+		shot_damage.chaos_damage = Vector2.ZERO
+
 	var is_crit = randf() < crit_chance
 	if is_crit:
 		shot_damage.physical_damage *= crit_damage_multiplier
@@ -339,6 +364,16 @@ func fan_the_hammer():
 		if not bullet_scene: return
 		
 		var final_damage = final_damage_info.duplicate(true)
+		
+		# KEYSTONE: "Become the Inferno" logic applies to the special, too.
+		if GameManager.owned_keystones.has("leo_inferno"):
+			var total_other_damage = final_damage.physical_damage + final_damage.cold_damage + final_damage.lightning_damage + randf_range(final_damage.chaos_damage.x, final_damage.chaos_damage.y)
+			if GameManager.is_avatar and GameManager.avatar_of == "Leo":
+				final_damage.fire_damage += total_other_damage
+			else:
+				final_damage.fire_damage = (final_damage.fire_damage * 2.0) - total_other_damage
+			final_damage.physical_damage = 0; final_damage.cold_damage = 0; final_damage.lightning_damage = 0; final_damage.chaos_damage = Vector2.ZERO
+
 		var is_crit = randf() < crit_chance
 		var final_multiplier = special_damage_multiplier
 		if is_crit:
@@ -455,3 +490,30 @@ func apply_shock():
 
 func _on_shock_timer_timeout():
 	is_shocked = false
+	
+func herald_of_ash_heal():
+	var heal_amount = max_health * 0.01
+	current_health = min(max_health, current_health + heal_amount)
+	if health_bar: health_bar.value = current_health
+	
+	# KEYSTONE: Herald of Ash (Avatar) - trigger damage reduction on heal
+	if GameManager.is_avatar and GameManager.avatar_of == "Leo" and GameManager.owned_keystones.has("leo_herald_ash"):
+		activate_herald_avatar_buff()
+		
+func activate_herald_avatar_buff():
+	damage_reduction_multiplier = 0.8 # 20% damage reduction
+	damage_reduc_timer.start()
+func _on_damage_reduc_timer_timeout():
+	damage_reduction_multiplier = 1.0 
+
+func _on_burn_aura_timer_timeout():
+	# KEYSTONE: Fan the Flames (Avatar) - apply burn to nearby enemies
+	if not (GameManager.is_avatar and GameManager.avatar_of == "Leo" and GameManager.owned_keystones.has("leo_fan_flames")):
+		return
+	
+	var burn_damage = DamageInfo.new()
+	burn_damage.fire_damage = 5 # A small, constant burn
+	
+	for body in burn_aura.get_overlapping_bodies():
+		if body.is_in_group("enemies"):
+			body.take_damage(burn_damage)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://c8ht66rbhourv"]
+[gd_scene load_steps=9 format=3 uid="uid://c8ht66rbhourv"]
 
 [ext_resource type="PackedScene" uid="uid://de6cyqhvsvgbu" path="res://player.tscn" id="1_0xm2m"]
 [ext_resource type="Script" uid="uid://c0dab3l75v0c3" path="res://main.gd" id="1_h2yge"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://ca5ujtmmoiu25" path="res://weapon_reward.tscn" id="4_272bh"]
 [ext_resource type="PackedScene" uid="uid://bt1pv8aiudbkh" path="res://pause_menu.tscn" id="4_lquwl"]
 [ext_resource type="PackedScene" uid="uid://cg6krh8ielc8b" path="res://game_over_screen.tscn" id="5_7mycd"]
+[ext_resource type="PackedScene" uid="uid://deqadw1ufsxt0" path="res://constellation_reward.tscn" id="6_5vw27"]
 [ext_resource type="PackedScene" uid="uid://0h83bol220km" path="res://card_selection.tscn" id="6_7mycd"]
 
 [node name="Main" type="Node2D"]
@@ -86,6 +87,9 @@ visible = false
 
 [node name="WeaponReward" parent="." instance=ExtResource("4_272bh")]
 process_mode = 3
+visible = false
+
+[node name="ConstellationReward" parent="." instance=ExtResource("6_5vw27")]
 visible = false
 
 [node name="Menu_Layer" type="CanvasLayer" parent="."]

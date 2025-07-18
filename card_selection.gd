@@ -18,6 +18,8 @@ func start_selection():
 	
 	cards.clear()
 	# Generate 3 unique cards
+	#var shitcard = GameManager.generate_fire_card()
+	#cards.append(shitcard)
 	while cards.size() < 3:
 		var new_card = GameManager.generate_card()
 		var is_duplicate = false

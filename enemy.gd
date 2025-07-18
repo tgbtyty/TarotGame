@@ -29,6 +29,7 @@ var player = null
 @onready var damage_number_scene = preload("res://damage_number.tscn")
 @onready var slow_timer = $SlowTimer
 @onready var shock_timer = $ShockTimer
+@onready var burn_spread_area = $BurnSpread
 
 func _ready():
 	player = get_tree().get_first_node_in_group("players")
@@ -37,20 +38,22 @@ func _ready():
 
 
 func initialize(round_number):
-	var round_health = base_health + (round_number - 1) * 1
+	var round_health = base_health + (round_number - 1) * 3
 	health = round_health + GameManager.enemy_health_bonus
 	
 	speed = base_speed * GameManager.enemy_speed_multiplier
 	scale *= GameManager.enemy_size_multiplier
 	
-	# Apply "all resist" from Pentacles cards
 	var all_res = GameManager.enemy_all_resist
 	physical_resist += all_res * 10
-	fire_resist += all_res
+	
+	# KEYSTONE: "Burn the World" prevents enemies from gaining fire resistance.
+	if not GameManager.owned_keystones.has("leo_burn_world"):
+		fire_resist += all_res
+	
 	cold_resist += all_res
 	lightning_resist += all_res
 	
-	# Build the enemy's damage info from base stats and global bonuses
 	damage_info = DamageInfo.new()
 	damage_info.physical_damage = base_attack_damage + GameManager.enemy_damage_bonus
 	damage_info.fire_damage = GameManager.enemy_fire_damage_bonus
@@ -58,26 +61,40 @@ func initialize(round_number):
 	damage_info.lightning_damage = GameManager.enemy_lightning_damage_bonus
 	damage_info.chaos_damage = GameManager.enemy_chaos_damage_bonus
 	
+	# KEYSTONE: "Burn the World" converts all enemy damage to fire.
+	if GameManager.owned_keystones.has("leo_burn_world"):
+		var total_other_damage = damage_info.physical_damage + damage_info.cold_damage + damage_info.lightning_damage + damage_info.chaos_damage.x
+		damage_info.fire_damage += total_other_damage
+		damage_info.physical_damage = 0
+		damage_info.cold_damage = 0
+		damage_info.lightning_damage = 0
+		damage_info.chaos_damage = Vector2.ZERO
+	
 func take_damage(damage_info: DamageInfo):
 	if not damage_info: return
 	
+	# KEYSTONE: "Char the Flesh" - non-fire damage heals the enemy.
+	var non_fire_damage = damage_info.physical_damage + damage_info.cold_damage + damage_info.lightning_damage + randf_range(damage_info.chaos_damage.x, damage_info.chaos_damage.y)
+	if GameManager.owned_keystones.has("leo_char_flesh") and non_fire_damage > 0 and damage_info.fire_damage <= 0:
+		health += non_fire_damage
+		show_damage_number(-non_fire_damage, Color.LIME_GREEN, 0) # Show a green "heal" number
+		return
+
 	var total_damage = 0.0
 	var damage_number_index = 0
 	
-	# Physical
 	if damage_info.physical_damage > 0:
 		var dmg = damage_info.physical_damage * (100.0 / (100.0 + physical_resist))
 		total_damage += dmg
-		show_damage_number(dmg, Color.GRAY, damage_number_index)
-		damage_number_index += 1
+		show_damage_number(dmg, Color.GRAY, damage_number_index); damage_number_index += 1
 	
-	# Fire (now only applies the burn effect)
+	# UPDATED: Fire damage no longer deals instant damage, it only applies the burn effect.
 	if damage_info.fire_damage > 0:
-		var dmg = damage_info.fire_damage * (1.0 - min(fire_resist, 75) / 100.0)
-		# We show the initial hit number, but the damage is done over time by the burn
-		show_damage_number(dmg, Color.RED, damage_number_index)
-		damage_number_index += 1
-		apply_burn(dmg)
+		var fire_res_mod = fire_resist
+		if not (GameManager.is_avatar and GameManager.avatar_of == "Leo" and GameManager.owned_keystones.has("leo_burn_world")):
+			fire_res_mod = min(fire_resist, 75)
+		var dmg = damage_info.fire_damage * (1.0 - fire_res_mod / 100.0)
+		apply_burn(dmg) # Just apply the burn, no "total_damage += dmg"
 	
 	# Cold
 	if damage_info.cold_damage > 0:
@@ -107,6 +124,9 @@ func take_damage(damage_info: DamageInfo):
 	
 	health -= total_damage
 	if health <= 0:
+		# KEYSTONE: "Herald of Ash" - check if dying while burning.
+		if GameManager.owned_keystones.has("leo_herald_ash") and not active_burns.is_empty():
+			player.herald_of_ash_heal()
 		died.emit()
 		queue_free()
 
@@ -123,11 +143,22 @@ func show_damage_number(amount, color, index):
 # --- Status Effect Logic ---
 
 func apply_burn(damage_amount):
-	if active_burns.size() >= 4:
-		return
+	var max_stacks = 4
+	if GameManager.owned_keystones.has("leo_char_flesh"):
+		max_stacks = 10
+	if active_burns.size() >= max_stacks: return
 
-	var dps = damage_amount / 3.0
-	var new_burn = {"dps": dps, "duration": 3.0}
+	# UPDATED: Burn now lasts 4 seconds. DPS is calculated accordingly.
+	var dps = damage_amount / 4 
+	var duration = 4
+	show_damage_number(damage_amount/4, Color.ORANGE_RED, 0)
+	
+	if GameManager.owned_keystones.has("leo_fan_flames"):
+		dps *= 4
+		duration /= 4
+		
+	# NEW: Add a tick_timer to show damage numbers cleanly.
+	var new_burn = {"dps": dps, "duration": duration, "tick_timer": 1.0}
 	active_burns.append(new_burn)
 
 func process_burns(delta):
@@ -136,8 +167,36 @@ func process_burns(delta):
 	
 	var expired_burns = []
 	for burn in active_burns:
+		# Deal smooth damage every frame
 		health -= burn.dps * delta
+		#show_damage_number(burn.dps * delta, Color.ORANGE_RED, 0)
+		# Tick down timers
 		burn.duration -= delta
+		burn.tick_timer -= delta
+		
+		# Show a damage number and check for new effects only once per second
+		if burn.tick_timer <= 0:
+			burn.tick_timer += 1.0 # Reset for the next second
+			show_damage_number(burn.dps, Color.ORANGE_RED, 0)
+			
+			# KEYSTONE: Herald of Ash (Avatar) - Burn damage spreads to nearby enemies once per tick.
+			if GameManager.is_avatar and GameManager.avatar_of == "Leo" and GameManager.owned_keystones.has("leo_herald_ash"):
+				# The damage amount for a new burn is its DPS * its original duration (4s)
+				var spread_damage_amount = burn.dps * 2
+				for body in burn_spread_area.get_overlapping_bodies():
+					if body.is_in_group("enemies") and body != self:
+						body.apply_burn(spread_damage_amount)
+			
+			if health <= 0:
+				# Check for death after a damage tick
+				if not is_queued_for_deletion():
+					# KEYSTONE: Herald of Ash (heal on death) check
+					if GameManager.owned_keystones.has("leo_herald_ash"):
+						player.herald_of_ash_heal()
+					died.emit()
+					queue_free()
+					return # Stop processing if dead
+		
 		if burn.duration <= 0:
 			expired_burns.append(burn)
 			
@@ -168,12 +227,16 @@ func _on_shock_timer_timeout():
 # --- Core Logic ---
 
 func _physics_process(_delta):
-	process_burns(_delta) # Process active burns every frame
-
+	process_burns(_delta)
 	if not is_knocked_back:
 		if player and player.current_health > 0:
+			var final_speed = speed
+			# KEYSTONE: "Fan the Flames" makes burning enemies faster.
+			if GameManager.owned_keystones.has("leo_fan_flames") and not active_burns.is_empty():
+				final_speed *= 1.3
+			
 			var direction = (player.global_position - global_position).normalized()
-			velocity = direction * speed
+			velocity = direction * final_speed
 			move_and_slide()
 			check_for_player_collision()
 	else:
