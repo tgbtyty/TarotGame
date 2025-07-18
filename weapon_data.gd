@@ -16,3 +16,4 @@ class_name WeaponData
 @export var added_damage_divisor: float = 1.0 # For shotgun
 @export var added_damage_multiplier: float = 1.0 # For sniper
 @export var stat_modifier_multiplier: float = 1.0 # For sniper
+@export var accepts_physical_damage_buffs: bool = true #flamethrower

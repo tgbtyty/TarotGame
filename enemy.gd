@@ -158,7 +158,7 @@ func apply_burn(damage_amount):
 		duration /= 4
 		
 	# NEW: Add a tick_timer to show damage numbers cleanly.
-	var new_burn = {"dps": dps, "duration": duration, "tick_timer": 1.0}
+	var new_burn = {"dps": dps, "duration": duration, "tick_timer": 0.5}
 	active_burns.append(new_burn)
 
 func process_burns(delta):
@@ -176,7 +176,7 @@ func process_burns(delta):
 		
 		# Show a damage number and check for new effects only once per second
 		if burn.tick_timer <= 0:
-			burn.tick_timer += 1.0 # Reset for the next second
+			burn.tick_timer += 0.5 # Reset for the next second
 			show_damage_number(burn.dps, Color.ORANGE_RED, 0)
 			
 			# KEYSTONE: Herald of Ash (Avatar) - Burn damage spreads to nearby enemies once per tick.

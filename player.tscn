@@ -94,6 +94,20 @@ collision_mask = 2
 [node name="CollisionShape2D" type="CollisionShape2D" parent="BurnAura"]
 shape = SubResource("CircleShape2D_sweqy")
 
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="BurnAura"]
+shape = SubResource("CircleShape2D_sweqy")
+
+[node name="FlamethrowerArea" type="Area2D" parent="."]
+collision_mask = 2
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="FlamethrowerArea"]
+polygon = PackedVector2Array(0, 0, 121, -59, 121, 52)
+
+[node name="Polygon2D" type="Polygon2D" parent="FlamethrowerArea"]
+visible = false
+color = Color(1, 0.470588, 0.27451, 0.411765)
+polygon = PackedVector2Array(0, 0, 121, -59, 121, 52)
+
 [connection signal="timeout" from="DashCooldown" to="." method="_on_dash_cooldown_timeout"]
 [connection signal="timeout" from="SpecialCooldown" to="." method="_on_special_cooldown_timeout"]
 [connection signal="timeout" from="ReloadTimer" to="." method="_on_reload_timer_timeout"]

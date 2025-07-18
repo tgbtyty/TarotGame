@@ -133,8 +133,7 @@ func build_weapon_database():
 	
 	# SHOTGUN
 	var shotgun_dmg = DamageInfo.new()
-	shotgun_dmg.physical_damage = 0
-	shotgun_dmg.fire_damage = 20
+	shotgun_dmg.physical_damage = 20
 	var shotgun = WeaponData.new()
 	shotgun.weapon_name = "Shotgun"
 	shotgun.description = "Fires 4 pellets in a cone. Added damage is divided among pellets."
@@ -158,6 +157,19 @@ func build_weapon_database():
 	sniper.added_damage_multiplier = 2.0 # Doubles added damage
 	sniper.stat_modifier_multiplier = 0.5 # Halves buffs to speed/ammo
 	weapon_database["Sniper"] = sniper
+	
+		# FLAMETHROWER (NEW)
+	var ft_dmg = DamageInfo.new()
+	ft_dmg.fire_damage = 20
+	var flamethrower = WeaponData.new()
+	flamethrower.weapon_name = "Flamethrower"
+	flamethrower.description = "A continuous stream of fire that damages enemies in a cone. Cannot deal Physical damage."
+	flamethrower.base_max_ammo = 50
+	flamethrower.base_reload_time = 1.5 # Reloads the whole tank
+	flamethrower.base_fire_rate = 0.1 # Fires very fast
+	flamethrower.base_damage = ft_dmg
+	flamethrower.accepts_physical_damage_buffs = false # This is the important flag
+	weapon_database["Flamethrower"] = flamethrower
 
 func get_random_reward_weapon(current_weapon_name):
 	var weapon_pool = weapon_database.keys()
@@ -208,7 +220,7 @@ func should_constellation_appear(chosen_card_rank):
 	var rank_bonus = (14 - chosen_card_rank) / 14.0 * 0.20 
 	var final_chance = 0.05 + rank_bonus
 	
-	return 1 #randf() < final_chance
+	return randf() < final_chance
 	
 func build_constellation_database():
 	# --- LEO ---

@@ -57,10 +57,13 @@ var dash_direction = Vector2.ZERO
 @onready var burn_aura = $BurnAura # NEW
 @onready var damage_reduc_timer = $DamageReducTimer # NEW
 @onready var burn_aura_timer = $BurnAuraTimer # NEW
+@onready var flamethrower_area = $FlamethrowerArea
+@onready var flamethrower_vfx = $FlamethrowerArea/Polygon2D # NEW
 @onready var health_bar = get_node_or_null("/root/Main/HUD_Layer/HealthBar")
 @onready var special_label = get_node_or_null("/root/Main/HUD_Layer/SpecialCooldownLabel")
 @onready var ammo_label = get_node_or_null("/root/Main/HUD_Layer/AmmoLabel")
 @onready var reload_indicator = get_node_or_null("/root/Main/HUD_Layer/ReloadIndicator")
+
 
 
 func _ready():
@@ -93,8 +96,9 @@ func recalculate_stats():
 	lightning_resist = elemental_res
 	
 	final_damage_info = current_weapon.base_damage.duplicate(true)
-	var added_phys_dmg = total_buffs.phys_dmg * current_weapon.added_damage_multiplier
-	final_damage_info.physical_damage += added_phys_dmg
+	if current_weapon.accepts_physical_damage_buffs:
+		var added_phys_dmg = total_buffs.phys_dmg * current_weapon.added_damage_multiplier
+		final_damage_info.physical_damage += added_phys_dmg
 	final_damage_info.fire_damage += total_buffs.fire_dmg
 	final_damage_info.cold_damage += total_buffs.cold_dmg
 	final_damage_info.lightning_damage += total_buffs.lightning_dmg
@@ -250,6 +254,25 @@ func shoot():
 				fire_single_bullet(1000, 1, 25.0)
 		"Sniper":
 			fire_sniper_raycast()
+		"Flamethrower":
+			# --- Visual Effect ---
+			flamethrower_vfx.visible = true
+			get_tree().create_timer(fire_rate).timeout.connect(func(): flamethrower_vfx.visible = false)
+
+			
+			var shot_damage = final_damage_info.duplicate(true)
+			var is_crit = randf() < crit_chance
+			if is_crit:
+				# Apply crit to all damage types on the flamethrower puff
+				shot_damage.fire_damage *= crit_damage_multiplier
+				shot_damage.cold_damage *= crit_damage_multiplier
+				shot_damage.lightning_damage *= crit_damage_multiplier
+				shot_damage.chaos_damage *= crit_damage_multiplier
+
+			var enemies_in_cone = flamethrower_area.get_overlapping_bodies()
+			for enemy in enemies_in_cone:
+				if enemy.is_in_group("enemies"):
+					enemy.take_damage(shot_damage)
 			
 	get_tree().create_timer(fire_rate).timeout.connect(func(): can_shoot = true)
 	if current_ammo == 0: reload_gun()
