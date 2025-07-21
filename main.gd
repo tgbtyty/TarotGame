@@ -5,6 +5,7 @@ extends Node2D
 @onready var player = $Player
 @onready var spawn_timer = $SpawnTimer
 @onready var weapon_reward_screen = $WeaponReward
+@onready var elite_enemy_scene = preload("res://elite_enemy.tscn") # NEW
 
 # --- UI References ---
 @onready var kills_label = $HUD_Layer/KillsLabel
@@ -19,7 +20,8 @@ extends Node2D
 var current_round = 1
 var enemies_to_spawn_this_round = 0
 var enemies_spawned_this_round = 0
-# We no longer need enemies_killed_this_round
+var elites_to_spawn_this_round = 0 # NEW
+var elite_spawn_indices = [] # NEW
 var is_round_active = false
 
 func _ready():
@@ -40,6 +42,17 @@ func start_new_round():
 	enemies_to_spawn_this_round = 5 + (current_round - 1) * 3
 	spawn_timer.wait_time = max(0.2, 1.0 - (current_round - 1) * 0.075)
 	enemies_spawned_this_round = 0
+	
+	# NEW: Calculate elite spawns for this round
+	elites_to_spawn_this_round = 0
+	if current_round > 5:
+		elites_to_spawn_this_round = 1 + floor((current_round - 6) / 3.0)
+	
+	# Create a list of all possible spawn indices and shuffle it
+	var indices = range(enemies_to_spawn_this_round)
+	indices.shuffle()
+	# The first N indices will be our elites
+	elite_spawn_indices = indices.slice(0, elites_to_spawn_this_round)
 	
 	if current_round > 1:
 		card_selection_screen.start_selection()
@@ -64,8 +77,12 @@ func _on_spawn_timer_timeout():
 	if get_tree().paused: return
 	
 	if enemies_spawned_this_round < enemies_to_spawn_this_round:
+		# NEW: Check if this spawn should be an elite
+		if enemies_spawned_this_round in elite_spawn_indices:
+			spawn_elite_enemy()
+		else:
+			spawn_enemy()
 		enemies_spawned_this_round += 1
-		spawn_enemy()
 	else:
 		spawn_timer.stop()
 
@@ -197,3 +214,11 @@ func _on_constellation_offer_scrapped():
 func proceed_to_tarot_cards():
 	current_round += 1
 	start_new_round() # Now proceed to the Tarot Card selection
+	
+func spawn_elite_enemy():
+	var screen_size = get_viewport_rect().size
+	var enemy_instance = elite_enemy_scene.instantiate()
+	enemy_instance.died.connect(on_enemy_died)
+	enemy_instance.initialize(current_round)
+	# ... (rest of spawn positioning logic is the same) ...
+	add_child(enemy_instance)

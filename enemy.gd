@@ -25,6 +25,8 @@ var active_burns = [] # NEW: Array to track multiple burn stacks
 var can_attack = true
 var is_knocked_back = false
 var player = null
+var speed_aura_multiplier = 1.0 # NEW
+var damage_aura_multiplier = 1.0 # NEW
 
 @onready var damage_number_scene = preload("res://damage_number.tscn")
 @onready var slow_timer = $SlowTimer
@@ -42,7 +44,7 @@ func initialize(round_number):
 	var round_health = base_health + (round_number - 1) * 3
 	health = round_health + GameManager.enemy_health_bonus
 	
-	speed = base_speed * GameManager.enemy_speed_multiplier
+	speed = base_speed * GameManager.enemy_speed_multiplier * speed_aura_multiplier
 	scale *= GameManager.enemy_size_multiplier
 	
 	var all_res = GameManager.enemy_all_resist
@@ -273,3 +275,22 @@ func attack():
 
 	player.take_damage(final_damage_info)
 	get_tree().create_timer(0.5).timeout.connect(func(): can_attack = true)
+	
+# NEW functions to handle aura buffs
+func apply_aura_buff(type, multiplier):
+	if type == "speed":
+		speed_aura_multiplier *= multiplier
+	elif type == "damage":
+		damage_aura_multiplier *= multiplier
+	# Recalculate final stats with the new buff
+	speed = base_speed * GameManager.enemy_speed_multiplier * speed_aura_multiplier
+	damage_info.physical_damage = (base_attack_damage + GameManager.enemy_damage_bonus) * damage_aura_multiplier
+
+func remove_aura_buff(type, multiplier):
+	if type == "speed":
+		speed_aura_multiplier /= multiplier
+	elif type == "damage":
+		damage_aura_multiplier /= multiplier
+	# Recalculate final stats after removing the buff
+	speed = base_speed * GameManager.enemy_speed_multiplier * speed_aura_multiplier
+	damage_info.physical_damage = (base_attack_damage + GameManager.enemy_damage_bonus) * damage_aura_multiplier
