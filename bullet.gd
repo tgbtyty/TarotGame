@@ -27,13 +27,16 @@ func _physics_process(delta):
 			target_enemy = find_closest_enemy()
 		
 		if is_instance_valid(target_enemy):
-			# UPDATED: Aim at the predicted position, not the current one
-			var target_pos = predict_intercept_point(target_enemy)
-			var direction_to_target = (target_pos - global_position).normalized()
-			var distance_to_target = global_position.distance_to(target_enemy.global_position)
+			var predicted_pos = predict_intercept_point(target_enemy)
+			var direction_to_target = (predicted_pos - global_position).normalized()
 			
-			if distance_to_target > 30:
-				rotation = lerp_angle(rotation, direction_to_target.angle(), homing_strength * delta * 5)
+			# NEW: Only turn if the target is within a reasonable forward-facing arc (~120 degrees).
+			# This prevents the bullet from trying to turn around 180 degrees.
+			var angle_to_target = forward_direction.angle_to(direction_to_target)
+			if abs(angle_to_target) < deg_to_rad(120):
+				# The lerp_angle weight determines how sharply the bullet turns.
+				var turn_speed = homing_strength * 10.0
+				rotation = lerp_angle(rotation, direction_to_target.angle(), turn_speed * delta)
 				forward_direction = Vector2.RIGHT.rotated(rotation)
 
 	# --- Final Movement ---
