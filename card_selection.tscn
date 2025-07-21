@@ -21,10 +21,10 @@ mouse_filter = 2
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 process_mode = 3
 layout_mode = 0
-offset_left = 27.115
-offset_top = 157.76
-offset_right = 92.115
-offset_bottom = 269.76
+offset_left = 27.0
+offset_top = 158.0
+offset_right = 92.0
+offset_bottom = 270.0
 scale = Vector2(1.033, 2.223)
 
 [node name="CardUI" parent="HBoxContainer" instance=ExtResource("2_dgva8")]

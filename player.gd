@@ -15,6 +15,10 @@ var total_buffs: Dictionary = {
 	"chaos_dmg": Vector2.ZERO, "crit_dmg": 0.0, "special_dmg": 0.0
 }
 var damage_reduction_multiplier = 1.0 #herald of ash
+var base_pierce: int
+var lifespan_multiplier: float
+var homing_strength: float
+var projectile_count_multiplier: int
 
 # --- Final Calculated Stats (dynamic) ---
 var max_health: float
@@ -103,6 +107,44 @@ func recalculate_stats():
 	final_damage_info.cold_damage += total_buffs.cold_dmg
 	final_damage_info.lightning_damage += total_buffs.lightning_dmg
 	final_damage_info.chaos_damage += total_buffs.chaos_dmg
+	
+		# --- NEW: Sagittarius Keystone Stats ---
+	# Herald of Shrapnel
+	base_pierce = 1 # Default pierce for all weapons
+	if GameManager.owned_keystones.has("sagi_herald_shrapnel"):
+		if GameManager.is_avatar and GameManager.avatar_of == "Sagittarius":
+			base_pierce += 10 # Avatar
+		else:
+			base_pierce += 2 # Base
+	
+	# Zhuge Liang
+	lifespan_multiplier = 1.0
+	if GameManager.owned_keystones.has("sagi_zhuge_liang"):
+		if GameManager.is_avatar and GameManager.avatar_of == "Sagittarius":
+			lifespan_multiplier *= 3.0 # Avatar: 200% *increased* means 3x total
+		else:
+			lifespan_multiplier *= 1.2 # Base
+			
+	# Throatseeker
+	homing_strength = 0.0
+	if GameManager.owned_keystones.has("sagi_throatseeker"):
+		if GameManager.is_avatar and GameManager.avatar_of == "Sagittarius":
+			homing_strength = 1.0 # Avatar: Strong homing
+		else:
+			homing_strength = 0.1 # Base: Slight bend
+	
+	# Blot out the skies
+	projectile_count_multiplier = 1
+	if GameManager.owned_keystones.has("sagi_blot_skies"):
+		if GameManager.is_avatar and GameManager.avatar_of == "Sagittarius":
+			projectile_count_multiplier = 3 # Avatar
+		else:
+			projectile_count_multiplier = 2 # Base
+	
+		# Herald of Shrapnel damage penalty
+	if GameManager.owned_keystones.has("sagi_herald_shrapnel"):
+		final_damage_info.physical_damage *= 0.9
+		# (apply penalty to other damage types too if needed)
 	
 	if health_bar:
 		health_bar.max_value = max_health
@@ -246,33 +288,45 @@ func shoot():
 	current_ammo -= 1
 	if ammo_label: ammo_label.text = "%d / %d" % [current_ammo, magazine_size]
 	
-	match current_weapon.weapon_name:
-		"Pistol":
-			fire_single_bullet(900, 1)
-		"Shotgun":
-			for i in 4:
-				fire_single_bullet(1000, 1, 25.0)
-		"Sniper":
-			fire_sniper_raycast()
-		"Flamethrower":
-			# --- Visual Effect ---
-			flamethrower_vfx.visible = true
-			get_tree().create_timer(fire_rate).timeout.connect(func(): flamethrower_vfx.visible = false)
-
+	
+	if GameManager.owned_keystones.has("sagi_blot_skies"):
+		var projectile_count = 0
+		match current_weapon.weapon_name:
+			"Pistol", "Sniper": projectile_count = 1 * projectile_count_multiplier
+			"Shotgun": projectile_count = 4 * projectile_count_multiplier
+		
+		for i in projectile_count:
+			# Fire in a random 360-degree direction
+			fire_single_bullet(900, base_pierce, 0.0, Vector2.RIGHT.rotated(randf_range(0, TAU)))
 			
-			var shot_damage = final_damage_info.duplicate(true)
-			var is_crit = randf() < crit_chance
-			if is_crit:
-				# Apply crit to all damage types on the flamethrower puff
-				shot_damage.fire_damage *= crit_damage_multiplier
-				shot_damage.cold_damage *= crit_damage_multiplier
-				shot_damage.lightning_damage *= crit_damage_multiplier
-				shot_damage.chaos_damage *= crit_damage_multiplier
+	else:
+		match current_weapon.weapon_name:
+			"Pistol":
+				fire_single_bullet(900, base_pierce, 0.0)
+			"Shotgun":
+				for i in 4:
+					fire_single_bullet(1000, base_pierce, 25.0)
+			"Sniper":
+				fire_sniper_raycast()
+			"Flamethrower":
+				# --- Visual Effect ---
+				flamethrower_vfx.visible = true
+				get_tree().create_timer(fire_rate).timeout.connect(func(): flamethrower_vfx.visible = false)
 
-			var enemies_in_cone = flamethrower_area.get_overlapping_bodies()
-			for enemy in enemies_in_cone:
-				if enemy.is_in_group("enemies"):
-					enemy.take_damage(shot_damage)
+				
+				var shot_damage = final_damage_info.duplicate(true)
+				var is_crit = randf() < crit_chance
+				if is_crit:
+					# Apply crit to all damage types on the flamethrower puff
+					shot_damage.fire_damage *= crit_damage_multiplier
+					shot_damage.cold_damage *= crit_damage_multiplier
+					shot_damage.lightning_damage *= crit_damage_multiplier
+					shot_damage.chaos_damage *= crit_damage_multiplier
+
+				var enemies_in_cone = flamethrower_area.get_overlapping_bodies()
+				for enemy in enemies_in_cone:
+					if enemy.is_in_group("enemies"):
+						enemy.take_damage(shot_damage)
 			
 	get_tree().create_timer(fire_rate).timeout.connect(func(): can_shoot = true)
 	if current_ammo == 0: reload_gun()
@@ -322,32 +376,30 @@ func fire_sniper_raycast():
 
 
 
-func fire_single_bullet(bullet_speed: float, pierce: int, spread_degrees: float = 0.0):
+func fire_single_bullet(bullet_speed: float, pierce: int, spread_degrees: float = 0.0, direction_override: Vector2 = Vector2.ZERO):
+	var weapon_lifespan = 1.0 # Default
+	match current_weapon.weapon_name:
+		"Pistol": weapon_lifespan = 2.0
+		"Shotgun": weapon_lifespan = 0.5
+	
 	if not bullet_scene: return
 	var bullet = bullet_scene.instantiate()
 	bullet.speed = bullet_speed
 	bullet.pierce_count = pierce
+	bullet.lifespan = weapon_lifespan * lifespan_multiplier
+	bullet.homing_strength = homing_strength
 	
 	var shot_damage = final_damage_info.duplicate(true)
 	if current_weapon.added_damage_divisor > 1.0:
 		shot_damage.physical_damage = ceil(shot_damage.physical_damage / current_weapon.added_damage_divisor)
 	
-	# KEYSTONE: "Become the Inferno" hijacks the damage calculation.
 	if GameManager.owned_keystones.has("leo_inferno"):
-		# Calculate the sum of all non-fire damage types.
 		var total_other_damage = shot_damage.physical_damage + shot_damage.cold_damage + shot_damage.lightning_damage + randf_range(shot_damage.chaos_damage.x, shot_damage.chaos_damage.y)
-		
-		# Check for the Avatar version of the keystone.
 		if GameManager.is_avatar and GameManager.avatar_of == "Leo":
-			shot_damage.fire_damage += total_other_damage # Avatar: Convert all damage to fire.
+			shot_damage.fire_damage += total_other_damage
 		else:
-			shot_damage.fire_damage = (shot_damage.fire_damage * 2.0) - total_other_damage # Base: Double fire, but other types reduce it.
-		
-		# Zero out all other damage types.
-		shot_damage.physical_damage = 0
-		shot_damage.cold_damage = 0
-		shot_damage.lightning_damage = 0
-		shot_damage.chaos_damage = Vector2.ZERO
+			shot_damage.fire_damage = (shot_damage.fire_damage * 2.0) - total_other_damage
+		shot_damage.physical_damage = 0; shot_damage.cold_damage = 0; shot_damage.lightning_damage = 0; shot_damage.chaos_damage = Vector2.ZERO
 
 	var is_crit = randf() < crit_chance
 	if is_crit:
@@ -359,7 +411,11 @@ func fire_single_bullet(bullet_speed: float, pierce: int, spread_degrees: float 
 	
 	bullet.damage_info = shot_damage
 	
-	var final_rotation = muzzle.global_rotation + deg_to_rad(randf_range(-spread_degrees/2, spread_degrees/2))
+	var final_rotation = muzzle.global_rotation
+	if direction_override != Vector2.ZERO:
+		final_rotation = direction_override.angle()
+	else:
+		final_rotation += deg_to_rad(randf_range(-spread_degrees/2, spread_degrees/2))
 	
 	get_tree().root.add_child(bullet)
 	bullet.global_position = muzzle.global_position

@@ -55,15 +55,15 @@ func get_scaled_value(rank_number, effect_type):
 
 	match effect_type:
 		"max_health": return base_value * 2 # e.g., King = 14*2 = 28 HP
-		"phys_resist", "elemental_resist", "all_resist": return base_value * 0.5 # e.g., King = 7% Resist
+		"phys_resist", "elemental_resist", "all_resist": return base_value # e.g., King = 7% Resist
 		"move_speed", "atk_speed", "reload_speed": return base_value # e.g., King = 14% Speed
 		"max_ammo": return base_value
 		"phys_dmg", "cold_dmg", "lightning_dmg": return base_value
 		"fire_dmg": return base_value * 2;
-		"crit_chance": return base_value * 0.45 # e.g., King = ~5% Crit Chance
+		"crit_chance": return base_value # e.g., King = ~5% Crit Chance
 		"chaos_dmg": return Vector2(0, base_value * 2) # e.g., King = 14-28 Chaos
 		"crit_dmg": return base_value * 2.5 # e.g., King = 35% Crit Damage
-		"special_dmg": return base_value * 0.6 # e.g., King = ~8% Special Damage
+		"special_dmg": return base_value # e.g., King = ~8% Special Damage
 		_: return base_value
 
 func generate_card():
@@ -220,7 +220,7 @@ func should_constellation_appear(chosen_card_rank):
 	var rank_bonus = (14 - chosen_card_rank) / 14.0 * 0.20 
 	var final_chance = 0.05 + rank_bonus
 	
-	return randf() < final_chance
+	return 1 #randf() < final_chance
 	
 func build_constellation_database():
 	# --- LEO ---
@@ -245,4 +245,23 @@ func build_constellation_database():
 	leo.keystones = [k1, k2, k3, k4, k5]
 	constellation_database["Leo"] = leo
 	# (Add other constellations here in the future)
+	
+		# --- SAGITTARIUS (NEW) ---
+	var sagittarius = ConstellationData.new()
+	sagittarius.const_name = "Sagittarius"
+	
+	# UPDATED: Changed variable names to be unique
+	var sk1 = KeystoneData.new()
+	sk1.key_id = "sagi_blot_skies"; sk1.key_name = "Blot out the skies"; sk1.description = "Double your projectiles. Projectiles are fired in random directions around you instead of where you're aiming."; sk1.avatar_description = "Avatar: Triple your projectiles."
+	var sk2 = KeystoneData.new()
+	sk2.key_id = "sagi_throatseeker"; sk2.key_name = "Throatseeker"; sk2.description = "Your projectiles bend toward enemies, giving them a slight homing effect."; sk2.avatar_description = "Avatar: Your projectiles have true homing."
+	var sk3 = KeystoneData.new()
+	sk3.key_id = "sagi_heartpiercer"; sk3.key_name = "Heartpiercer"; sk3.description = "Projectiles gain damage as they travel, dealing up to 30% MORE damage, but start with 20% LESS damage."; sk3.avatar_description = "Avatar: Projectiles gain up to 200% MORE damage as they travel."
+	var sk4 = KeystoneData.new()
+	sk4.key_id = "sagi_herald_shrapnel"; sk4.key_name = "Herald of Shrapnel"; sk4.description = "Your projectiles have +2 pierce. Deal 10% less damage."; sk4.avatar_description = "Avatar: Your projectiles have +10 pierce."
+	var sk5 = KeystoneData.new()
+	sk5.key_id = "sagi_zhuge_liang"; sk5.key_name = "Zhuge Liang"; sk5.description = "Your projectiles have 20% increased lifespan/range."; sk5.avatar_description = "Avatar: Your projectiles have 200% increased lifespan/range."
+
+	sagittarius.keystones = [sk1, sk2, sk3, sk4, sk5]
+	constellation_database["Sagittarius"] = sagittarius
 	

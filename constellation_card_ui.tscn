@@ -3,19 +3,28 @@
 [ext_resource type="Script" uid="uid://bbou72dlyxibt" path="res://constellation_card_ui.gd" id="1_ehiro"]
 
 [node name="ConstellationCardUi" type="PanelContainer"]
+offset_right = 54.0
+offset_bottom = 112.0
+scale = Vector2(0.765, 0.765)
 script = ExtResource("1_ehiro")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
 
 [node name="ConstellationNameLabel" type="Label" parent="VBoxContainer"]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
+autowrap_mode = 2
 
 [node name="KeystoneNameLabel" type="Label" parent="VBoxContainer"]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
+autowrap_mode = 2
 
 [node name="DescriptionLabel" type="Label" parent="VBoxContainer"]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
+autowrap_mode = 2
 
 [node name="SelectButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2

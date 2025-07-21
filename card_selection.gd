@@ -17,7 +17,7 @@ func start_selection():
 		child.queue_free()
 	
 	cards.clear()
-	# Generate 3 unique cards
+	## Generate 3 unique cards
 	#var shitcard = GameManager.generate_fire_card()
 	#cards.append(shitcard)
 	while cards.size() < 3:

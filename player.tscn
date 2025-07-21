@@ -94,9 +94,6 @@ collision_mask = 2
 [node name="CollisionShape2D" type="CollisionShape2D" parent="BurnAura"]
 shape = SubResource("CircleShape2D_sweqy")
 
-[node name="CollisionShape2D2" type="CollisionShape2D" parent="BurnAura"]
-shape = SubResource("CircleShape2D_sweqy")
-
 [node name="FlamethrowerArea" type="Area2D" parent="."]
 collision_mask = 2
 

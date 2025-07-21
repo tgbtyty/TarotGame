@@ -18,10 +18,10 @@ grow_vertical = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 0
-offset_left = 146.0
-offset_top = 140.0
-offset_right = 393.0
-offset_bottom = 416.0
+offset_left = 196.0
+offset_top = 141.0
+offset_right = 308.0
+offset_bottom = 308.0
 
 [node name="ConstellationCardUi" parent="HBoxContainer" instance=ExtResource("2_yk3df")]
 layout_mode = 2

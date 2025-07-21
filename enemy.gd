@@ -31,6 +31,7 @@ var player = null
 @onready var shock_timer = $ShockTimer
 @onready var burn_spread_area = $BurnSpread
 
+
 func _ready():
 	player = get_tree().get_first_node_in_group("players")
 	slow_timer.timeout.connect(_on_slow_timer_timeout)
@@ -162,6 +163,7 @@ func apply_burn(damage_amount):
 	active_burns.append(new_burn)
 
 func process_burns(delta):
+	
 	if active_burns.is_empty():
 		return
 	
@@ -182,7 +184,7 @@ func process_burns(delta):
 			# KEYSTONE: Herald of Ash (Avatar) - Burn damage spreads to nearby enemies once per tick.
 			if GameManager.is_avatar and GameManager.avatar_of == "Leo" and GameManager.owned_keystones.has("leo_herald_ash"):
 				# The damage amount for a new burn is its DPS * its original duration (4s)
-				var spread_damage_amount = burn.dps * 2
+				var spread_damage_amount = burn.dps * 4
 				for body in burn_spread_area.get_overlapping_bodies():
 					if body.is_in_group("enemies") and body != self:
 						body.apply_burn(spread_damage_amount)
